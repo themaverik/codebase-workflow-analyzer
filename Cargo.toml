@@ -1,0 +1,34 @@
+[package]
+name = "codebase_analyzer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+walkdir = "2.0"
+regex = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["rt-multi-thread"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Optional integrations (only compiled when needed)
+git2 = { version = "0.18", optional = true }
+reqwest = { version = "0.11", features = ["json"], optional = true }
+uuid = { version = "1.0", features = ["v4", "serde"], optional = true }
+
+# Optional web server (only compiled when needed)
+axum = { version = "0.7", optional = true }
+tower = { version = "0.4", optional = true }
+tower-http = { version = "0.4", features = ["cors"], optional = true }
+tokio-util = { version = "0.7", features = ["io"], optional = true }
+
+[features]
+default = []
+integrations = ["git2", "reqwest", "uuid"]
+web-server = ["axum", "tower", "tower-http", "tokio-util", "integrations"]
+
+[[bin]]
+name = "codebase-analyzer"
+path = "src/main.rs"

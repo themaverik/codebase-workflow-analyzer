@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codebase Workflow Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+        
+        #results {
+            max-height: 500px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .status-healthy { background-color: #27ae60; }
+        .status-warning { background-color: #f39c12; }
+        .status-error { background-color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Codebase Workflow Analyzer</h1>
+            <p class="subtitle">Reverse engineer existing codebases into systematic development workflows</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="card">
+                <h2>Analyze Codebase</h2>
+                <form id="analyzeForm">
+                    <div class="form-group">
+                        <label for="projectPath">Project Path:</label>
+                        <input type="text" id="projectPath" name="path" placeholder="/path/to/your/project" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="analyzer">Analyzer Type (optional):</label>
+                        <select id="analyzer" name="analyzer">
+                            <option value="">Auto-detect</option>
+                            <option value="typescript">TypeScript/React</option>
+                            <option value="java">Java/Spring Boot</option>
+                            <option value="python">Python/Django/Flask</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="integrations" name="integrations">
+                            <label for="integrations">Enable Integrations (Git, GitHub, Jira)</label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" id="analyzeBtn">Analyze Codebase</button>
+                </form>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing codebase...</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Results</h2>
+                <div id="results">
+                    Click "Analyze Codebase" to see results here...
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 2rem;">
+            <h2>System Status</h2>
+            <div id="systemStatus">
+                <p><span class="status-indicator status-warning"></span>Loading system status...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let systemHealthy = false;
+
+        // Load system status on page load
+        async function loadSystemStatus() {
+            try {
+                const healthResponse = await fetch('/api/health');
+                const health = await healthResponse.json();
+                
+                const integrationResponse = await fetch('/api/integrations');
+                const integrations = await integrationResponse.json();
+                
+                systemHealthy = healthResponse.ok;
+                
+                const statusDiv = document.getElementById('systemStatus');
+                statusDiv.innerHTML = `
+                    <p><span class="status-indicator ${systemHealthy ? 'status-healthy' : 'status-error'}"></span>
+                       API Server: ${systemHealthy ? 'Healthy' : 'Error'} (v${health.version || 'unknown'})</p>
+                    <p><span class="status-indicator ${integrations.git_available ? 'status-healthy' : 'status-warning'}"></span>
+                       Git Repository: ${integrations.git_available ? 'Available' : 'Not detected'}</p>
+                    <p><span class="status-indicator ${integrations.github_configured ? 'status-healthy' : 'status-warning'}"></span>
+                       GitHub Integration: ${integrations.github_configured ? 'Configured' : 'Not configured'}</p>
+                    <p><span class="status-indicator ${integrations.jira_configured ? 'status-healthy' : 'status-warning'}"></span>
+                       Jira Integration: ${integrations.jira_configured ? 'Configured' : 'Not configured'}</p>
+                `;
+            } catch (error) {
+                document.getElementById('systemStatus').innerHTML = 
+                    '<p><span class="status-indicator status-error"></span>Unable to connect to API server</p>';
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!systemHealthy) {
+                alert('System is not healthy. Please check the system status.');
+                return;
+            }
+            
+            const formData = new FormData(e.target);
+            const params = new URLSearchParams();
+            
+            params.append('path', formData.get('path'));
+            if (formData.get('analyzer')) {
+                params.append('analyzer', formData.get('analyzer'));
+            }
+            if (formData.get('integrations') === 'on') {
+                params.append('integrations', 'true');
+            }
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('results').textContent = '';
+            
+            try {
+                const response = await fetch(`/api/analyze?${params.toString()}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.analysis) {
+                    displayAnalysisResults(result.analysis, result.integration_summary);
+                } else {
+                    document.getElementById('results').textContent = 
+                        `Error: ${result.error || 'Unknown error occurred'}`;
+                }
+            } catch (error) {
+                document.getElementById('results').textContent = 
+                    `Network error: ${error.message}`;
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        });
+
+        function displayAnalysisResults(analysis, integrationSummary) {
+            const results = document.getElementById('results');
+            let output = '';
+            
+            // Basic analysis info
+            output += `Codebase Analysis Results\n`;
+            output += `========================\n\n`;
+            output += `Project Type: ${analysis.project_type || 'Unknown'}\n`;
+            output += `Files Analyzed: ${analysis.files_analyzed || 0}\n`;
+            output += `Components Found: ${analysis.components ? analysis.components.length : 0}\n`;
+            output += `User Stories: ${analysis.user_stories ? analysis.user_stories.length : 0}\n`;
+            output += `Tasks: ${analysis.tasks ? analysis.tasks.length : 0}\n\n`;
+            
+            // Components summary
+            if (analysis.components && analysis.components.length > 0) {
+                output += `Components:\n`;
+                output += `-----------\n`;
+                analysis.components.forEach(component => {
+                    output += `• ${component.name} (${component.component_type})\n`;
+                    output += `  Purpose: ${component.purpose}\n`;
+                    output += `  Complexity: ${component.complexity_score}/100\n`;
+                    output += `  Status: ${component.implementation_status}\n\n`;
+                });
+            }
+            
+            // User stories summary
+            if (analysis.user_stories && analysis.user_stories.length > 0) {
+                output += `User Stories:\n`;
+                output += `-------------\n`;
+                analysis.user_stories.forEach(story => {
+                    output += `• ${story.title}\n`;
+                    output += `  Priority: ${story.priority}\n`;
+                    output += `  Status: ${story.status}\n\n`;
+                });
+            }
+            
+            // Integration summary
+            if (integrationSummary) {
+                output += `Integration Summary:\n`;
+                output += `-------------------\n`;
+                
+                if (integrationSummary.git_info) {
+                    const git = integrationSummary.git_info;
+                    output += `Git Repository:\n`;
+                    output += `  Branch: ${git.current_branch}\n`;
+                    output += `  Commits: ${git.total_commits}\n`;
+                    output += `  Contributors: ${git.contributors.length}\n\n`;
+                }
+                
+                if (integrationSummary.created_issues.length > 0) {
+                    output += `Created Issues:\n`;
+                    integrationSummary.created_issues.forEach(issue => {
+                        output += `• ${issue.platform}: ${issue.title} (${issue.issue_id})\n`;
+                    });
+                    output += '\n';
+                }
+            }
+            
+            results.textContent = output;
+        }
+
+        // Load system status on page load
+        loadSystemStatus();
+    </script>
+</body>
+</html>
