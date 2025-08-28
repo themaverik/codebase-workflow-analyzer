@@ -1,10 +1,5 @@
 use clap::{Parser, Subcommand};
-use crate::core::{CodebaseAnalyzer, AnalyzerConfig, ProjectType};
-use crate::analyzers::{TypeScriptAnalyzer, JavaAnalyzer, PythonAnalyzer};
-use crate::intelligence::IntelligenceEngine;
-use crate::generators::{DocumentGeneratorFactory, DocumentType};
 use anyhow::Result;
-use std::path::Path;
 
 #[derive(Parser)]
 #[command(name = "codebase-analyzer")]
@@ -17,31 +12,11 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Analyze a codebase (auto-detects TypeScript/React, Java/Spring Boot, Python/Django/Flask)
+    /// Analyze a codebase (basic functionality)
     Analyze {
         /// Path to the project directory
         #[arg(short, long)]
         path: String,
-        
-        /// Output format (json, yaml, summary)
-        #[arg(short, long, default_value = "summary")]
-        output: String,
-        
-        /// Output file path (optional, prints to stdout if not specified)
-        #[arg(short = 'f', long)]
-        output_file: Option<String>,
-        
-        /// Skip PRD generation
-        #[arg(long)]
-        skip_prd: bool,
-        
-        /// Skip user story inference
-        #[arg(long)]
-        skip_stories: bool,
-        
-        /// Verbose output
-        #[arg(short, long)]
-        verbose: bool,
         
         /// Force specific analyzer (typescript, java, python)
         #[arg(long)]
@@ -54,10 +29,34 @@ pub enum Commands {
         /// Output directory for generated documents
         #[arg(long)]
         docs_dir: Option<String>,
+        
+        /// Enable integrations (requires --features integrations)
+        #[cfg(feature = "integrations")]
+        #[arg(long)]
+        enable_integrations: bool,
     },
     
     /// List supported project types
     List,
+    
+    /// Test Phase 1: Framework Detection and Business Domain Inference
+    TestPhase1 {
+        /// Path to the project directory
+        #[arg(short, long)]
+        path: String,
+        
+        /// Output directory for analysis results
+        #[arg(long, default_value = "./phase1-results")]
+        output: String,
+    },
+    
+    /// Start web server (requires --features web-server)
+    #[cfg(feature = "web-server")]
+    Serve {
+        /// Port to serve on
+        #[arg(short, long, default_value = "3000")]
+        port: u16,
+    },
 }
 
 pub struct CliRunner;
@@ -71,326 +70,162 @@ impl CliRunner {
         match cli.command {
             Commands::Analyze { 
                 path, 
-                output, 
-                output_file, 
-                skip_prd, 
-                skip_stories, 
-                verbose,
-                analyzer,
-                generate_docs,
+                analyzer, 
+                generate_docs, 
                 docs_dir,
+                #[cfg(feature = "integrations")]
+                enable_integrations
             } => {
-                self.run_analysis(path, output, output_file, skip_prd, skip_stories, verbose, analyzer, generate_docs, docs_dir).await
+                #[cfg(feature = "integrations")]
+                {
+                    self.run_analysis_with_integrations(path, analyzer, generate_docs, docs_dir, enable_integrations).await
+                }
+                #[cfg(not(feature = "integrations"))]
+                {
+                    self.run_analysis(path, analyzer, generate_docs, docs_dir).await
+                }
             }
             Commands::List => {
                 self.list_supported_types();
                 Ok(())
             }
+            Commands::TestPhase1 { path, output } => {
+                self.run_phase1_test(path, output).await
+            }
+            #[cfg(feature = "web-server")]
+            Commands::Serve { port } => {
+                crate::server::start_server(port).await
+            }
         }
     }
     
-    async fn run_analysis(
-        &self, 
-        path: String, 
-        output_format: String,
-        output_file: Option<String>,
-        skip_prd: bool,
-        skip_stories: bool,
-        verbose: bool,
-        forced_analyzer: Option<String>,
-        generate_docs: bool,
-        docs_dir: Option<String>,
-    ) -> Result<()> {
-        if verbose {
-            println!("🔍 Starting codebase analysis...");
-            println!("📁 Project path: {}", path);
+    async fn run_analysis(&self, path: String, analyzer: Option<String>, generate_docs: bool, docs_dir: Option<String>) -> Result<()> {
+        println!("Analyzing project at: {}", path);
+        
+        // Check if path exists
+        if !std::path::Path::new(&path).exists() {
+            anyhow::bail!("Path does not exist: {}", path);
         }
         
-        // Validate path exists
-        if !Path::new(&path).exists() {
-            anyhow::bail!("Project path does not exist: {}", path);
-        }
+        // Use the actual analyzers instead of basic file scanning
+        use crate::core::{CodebaseAnalyzer, AnalyzerConfig};
+        use crate::analyzers::{TypeScriptAnalyzer, JavaAnalyzer, PythonAnalyzer};
         
-        // Create analyzer config
-        let mut config = AnalyzerConfig::default();
-        config.generate_prd = !skip_prd;
-        config.infer_user_stories = !skip_stories;
+        let config = AnalyzerConfig::default();
         
-        // Detect or create appropriate analyzer
-        let (analyzer_name, analysis) = if let Some(forced) = forced_analyzer {
-            self.create_forced_analyzer(&forced, config, &path, verbose)?
-        } else {
-            self.detect_and_create_analyzer(config, &path, verbose)?
-        };
-        
-        if verbose {
-            println!("✅ Project type detected: {}", analyzer_name);
-            println!("🔧 Analysis complete!");
-        }
-        
-        if verbose {
-            println!("   - Files analyzed: {}", analysis.analysis_metadata.files_analyzed);
-            println!("   - Components found: {}", analysis.components.len());
-            println!("   - User stories: {}", analysis.user_stories.len());
-            println!("   - Tasks: {}", analysis.tasks.len());
-        }
-        
-        // Enhanced document generation
-        if generate_docs {
-            let output_dir = docs_dir.unwrap_or_else(|| format!("{}-docs", analysis.project_name));
-            
-            if verbose {
-                println!("📚 Generating enhanced documentation...");
-            }
-            
-            // Create output directory
-            std::fs::create_dir_all(&output_dir)?;
-            
-            // Generate all documents
-            let generated_docs = DocumentGeneratorFactory::generate_all_documents(&analysis, &output_dir)?;
-            
-            if verbose {
-                println!("✅ Generated {} documents:", generated_docs.len());
-                for doc in &generated_docs {
-                    println!("   - {} ({})", doc.filename, format!("{:?}", doc.document_type));
+        // Select analyzer based on parameter or auto-detection
+        let (selected_analyzer, analyzer_name): (Box<dyn CodebaseAnalyzer>, &str) = 
+            if let Some(analyzer_name) = &analyzer {
+                match analyzer_name.to_lowercase().as_str() {
+                    "typescript" | "ts" => {
+                        (Box::new(TypeScriptAnalyzer::new(config)), "TypeScript")
+                    },
+                    "java" => {
+                        (Box::new(JavaAnalyzer::new(config)), "Java")
+                    },
+                    "python" | "py" => {
+                        (Box::new(PythonAnalyzer::new(config)), "Python")
+                    },
+                    _ => {
+                        anyhow::bail!("Unsupported analyzer: {}. Use 'typescript', 'java', or 'python'", analyzer_name);
+                    }
                 }
-                println!("📁 Documents saved to: {}", output_dir);
-            }
-        }
-        
-        // Generate standard output
-        let output_content = match output_format.as_str() {
-            "json" => serde_json::to_string_pretty(&analysis)?,
-            "summary" => self.generate_summary(&analysis),
-            _ => anyhow::bail!("Unsupported output format: {}", output_format),
-        };
-        
-        // Write standard output
-        match output_file {
-            Some(file_path) => {
-                std::fs::write(&file_path, output_content)?;
-                if verbose {
-                    println!("💾 Standard analysis saved to: {}", file_path);
+            } else {
+                // Auto-detect analyzer
+                let ts_analyzer = TypeScriptAnalyzer::new(config.clone());
+                let java_analyzer = JavaAnalyzer::new(config.clone());
+                let python_analyzer = PythonAnalyzer::new(config.clone());
+                
+                if ts_analyzer.can_analyze(&path) {
+                    (Box::new(ts_analyzer), "TypeScript")
+                } else if java_analyzer.can_analyze(&path) {
+                    (Box::new(java_analyzer), "Java")
+                } else if python_analyzer.can_analyze(&path) {
+                    (Box::new(python_analyzer), "Python")
+                } else {
+                    // Default to TypeScript analyzer
+                    (Box::new(TypeScriptAnalyzer::new(config)), "TypeScript")
                 }
-            }
-            None => {
-                println!("{}", output_content);
+            };
+        
+        println!("Using {} analyzer", analyzer_name);
+        println!("Running comprehensive analysis...");
+        
+        // Run the actual analysis
+        match selected_analyzer.analyze(&path) {
+            Ok(analysis) => {
+                println!("Analysis completed successfully!");
+                println!("Project: {} ({:?})", analysis.project_name, analysis.project_type);
+                println!("Components found: {}", analysis.components.len());
+                println!("User stories generated: {}", analysis.user_stories.len());
+                println!("Framework: {}", analysis.framework_analysis.architecture_pattern);
+                println!("Business context: {} ({:.1}% confidence)", 
+                    analysis.business_context.inferred_product_type,
+                    analysis.business_context.confidence * 100.0);
+                
+                if generate_docs {
+                    self.generate_documentation(&analysis, docs_dir, &path).await?;
+                }
+            },
+            Err(e) => {
+                anyhow::bail!("Analysis failed: {}", e);
             }
         }
         
         Ok(())
     }
     
-    fn detect_and_create_analyzer(&self, config: AnalyzerConfig, path: &str, verbose: bool) -> Result<(String, crate::core::CodebaseAnalysis)> {
-        // Try analyzers in order of specificity
+    async fn generate_documentation(&self, analysis: &crate::core::CodebaseAnalysis, docs_dir: Option<String>, project_path: &str) -> Result<()> {
+        use crate::generators::DocumentGeneratorFactory;
         
-        // Try TypeScript/React first
-        let ts_analyzer = TypeScriptAnalyzer::new(config.clone());
-        if ts_analyzer.can_analyze(path) {
-            if verbose {
-                println!("🔧 Running TypeScript/React analysis...");
-            }
-            let analysis = ts_analyzer.analyze(path)?;
-            return Ok(("TypeScript/React".to_string(), analysis));
+        let output_dir = docs_dir.unwrap_or_else(|| format!("{}/analysis-docs", project_path));
+        println!("\nGenerating comprehensive documentation to: {}", output_dir);
+        
+        // Create output directory
+        std::fs::create_dir_all(&output_dir)?;
+        
+        // Generate all enhanced documents using the factory
+        let generated_docs = DocumentGeneratorFactory::generate_all_documents(analysis, &output_dir)?;
+        
+        println!("Generated {} enhanced documents:", generated_docs.len());
+        for doc in &generated_docs {
+            println!("  - {} ({:?})", doc.filename, doc.document_type);
         }
+        println!("Documents saved to: {}", output_dir);
         
-        // Try Java/Spring Boot
-        let java_analyzer = JavaAnalyzer::new(config.clone());
-        if java_analyzer.can_analyze(path) {
-            if verbose {
-                println!("🔧 Running Java/Spring Boot analysis...");
-            }
-            let analysis = java_analyzer.analyze(path)?;
-            return Ok(("Java/Spring Boot".to_string(), analysis));
-        }
-        
-        // Try Python/Django/Flask
-        let python_analyzer = PythonAnalyzer::new(config.clone());
-        if python_analyzer.can_analyze(path) {
-            if verbose {
-                println!("🔧 Running Python analysis...");
-            }
-            let analysis = python_analyzer.analyze(path)?;
-            let framework_name = match analysis.project_type {
-                ProjectType::Django => "Python/Django",
-                ProjectType::Flask => "Python/Flask", 
-                _ => "Python",
-            };
-            return Ok((framework_name.to_string(), analysis));
-        }
-        
-        anyhow::bail!("No suitable analyzer found for project at '{}'. Supported types: TypeScript/React, Java/Spring Boot, Python/Django/Flask", path)
+        Ok(())
     }
     
-    fn create_forced_analyzer(&self, analyzer_type: &str, config: AnalyzerConfig, path: &str, verbose: bool) -> Result<(String, crate::core::CodebaseAnalysis)> {
-        match analyzer_type.to_lowercase().as_str() {
-            "typescript" | "react" | "ts" => {
-                if verbose {
-                    println!("🔧 Force-running TypeScript/React analysis...");
-                }
-                let analyzer = TypeScriptAnalyzer::new(config);
-                let analysis = analyzer.analyze(path)?;
-                Ok(("TypeScript/React (forced)".to_string(), analysis))
-            },
-            "java" | "spring" | "springboot" => {
-                if verbose {
-                    println!("🔧 Force-running Java/Spring Boot analysis...");
-                }
-                let analyzer = JavaAnalyzer::new(config);
-                let analysis = analyzer.analyze(path)?;
-                Ok(("Java/Spring Boot (forced)".to_string(), analysis))
-            },
-            "python" | "django" | "flask" => {
-                if verbose {
-                    println!("🔧 Force-running Python analysis...");
-                }
-                let analyzer = PythonAnalyzer::new(config);
-                let analysis = analyzer.analyze(path)?;
-                let framework_name = match analysis.project_type {
-                    ProjectType::Django => "Python/Django (forced)",
-                    ProjectType::Flask => "Python/Flask (forced)",
-                    _ => "Python (forced)",
-                };
-                Ok((framework_name.to_string(), analysis))
-            },
-            _ => anyhow::bail!("Unsupported analyzer type: '{}'. Supported: typescript, java, python", analyzer_type)
+    #[cfg(feature = "integrations")]
+    async fn run_analysis_with_integrations(&self, path: String, analyzer: Option<String>, generate_docs: bool, docs_dir: Option<String>, enable_integrations: bool) -> Result<()> {
+        // Run basic analysis first
+        self.run_analysis(path.clone(), analyzer, generate_docs, docs_dir).await?;
+        
+        // If integrations are enabled, run them
+        if enable_integrations {
+            println!("\nRunning integrations...");
+            
+            let config = crate::integrations::IntegrationConfig::default();
+            let integration_engine = crate::integrations::IntegrationEngine::new(config);
+            
+            // Note: For a real integration, we would need to properly analyze the codebase
+            // and create a CodebaseAnalysis struct. For now, we'll show basic integration status.
+            
+            println!("Integration Status:");
+            println!("  Git: {}", if std::path::Path::new(&format!("{}/.git", path)).exists() { "Available" } else { "Not a git repository" });
+            println!("  GitHub: {}", if std::env::var("GITHUB_TOKEN").is_ok() { "Token configured" } else { "No token (set GITHUB_TOKEN)" });
+            println!("  Jira: {}", if std::env::var("JIRA_URL").is_ok() && std::env::var("JIRA_TOKEN").is_ok() { "Configured" } else { "Not configured" });
+            
+            println!("\nTo use integrations, ensure environment variables are set:");
+            println!("  export GITHUB_TOKEN=your_token");
+            println!("  export JIRA_URL=https://your-instance.atlassian.net");
+            println!("  export JIRA_TOKEN=your_token");
+            println!("  export JIRA_PROJECT_KEY=YOUR_PROJECT");
         }
+        
+        Ok(())
     }
     
-    fn generate_summary(&self, analysis: &crate::core::CodebaseAnalysis) -> String {
-        let mut summary = String::new();
-        
-        summary.push_str(&format!("# Codebase Analysis: {}\n\n", analysis.project_name));
-        
-        // Project Overview
-        summary.push_str("## 📋 Project Overview\n");
-        summary.push_str(&format!("- **Project Type**: {:?}\n", analysis.project_type));
-        summary.push_str(&format!("- **Files Analyzed**: {}\n", analysis.analysis_metadata.files_analyzed));
-        summary.push_str(&format!("- **Lines of Code**: {}\n", analysis.analysis_metadata.lines_of_code));
-        summary.push_str(&format!("- **Components Found**: {}\n", analysis.components.len()));
-        summary.push_str(&format!("- **Confidence Score**: {:.1}%\n\n", analysis.analysis_metadata.confidence_score * 100.0));
-        
-        // Components Summary
-        summary.push_str("## 🧩 Components Analysis\n\n");
-        
-        let mut component_types = std::collections::HashMap::new();
-        let mut total_complexity = 0;
-        
-        for component in &analysis.components {
-            *component_types.entry(format!("{:?}", component.component_type)).or_insert(0) += 1;
-            total_complexity += component.complexity_score as u32;
-        }
-        
-        summary.push_str("### Component Types:\n");
-        for (comp_type, count) in component_types {
-            summary.push_str(&format!("- **{}**: {} components\n", comp_type, count));
-        }
-        
-        let avg_complexity = if !analysis.components.is_empty() {
-            total_complexity as f32 / analysis.components.len() as f32
-        } else {
-            0.0
-        };
-        summary.push_str(&format!("\n**Average Complexity Score**: {:.1}/100\n\n", avg_complexity));
-        
-        // Implementation Status
-        let mut status_counts = std::collections::HashMap::new();
-        for component in &analysis.components {
-            *status_counts.entry(format!("{:?}", component.implementation_status)).or_insert(0) += 1;
-        }
-        
-        summary.push_str("### Implementation Status:\n");
-        for (status, count) in status_counts {
-            summary.push_str(&format!("- **{}**: {} components\n", status, count));
-        }
-        summary.push_str("\n");
-        
-        // Top Components by Complexity
-        let mut sorted_components = analysis.components.clone();
-        sorted_components.sort_by(|a, b| b.complexity_score.cmp(&a.complexity_score));
-        
-        summary.push_str("### Most Complex Components:\n");
-        for (i, component) in sorted_components.iter().take(5).enumerate() {
-            summary.push_str(&format!("{}. **{}** ({:?}) - Complexity: {}/100\n", 
-                i + 1, component.name, component.component_type, component.complexity_score));
-            summary.push_str(&format!("   - Purpose: {}\n", component.purpose));
-            if !component.api_calls.is_empty() {
-                summary.push_str(&format!("   - API Calls: {}\n", component.api_calls.len()));
-            }
-        }
-        summary.push_str("\n");
-        
-        // User Stories
-        if !analysis.user_stories.is_empty() {
-            summary.push_str("## 📖 User Stories\n\n");
-            
-            let mut priority_counts = std::collections::HashMap::new();
-            for story in &analysis.user_stories {
-                *priority_counts.entry(format!("{:?}", story.priority)).or_insert(0) += 1;
-            }
-            
-            summary.push_str("### By Priority:\n");
-            for (priority, count) in priority_counts {
-                summary.push_str(&format!("- **{}**: {} stories\n", priority, count));
-            }
-            summary.push_str("\n");
-            
-            // Show high-priority stories
-            let high_priority_stories: Vec<_> = analysis.user_stories.iter()
-                .filter(|s| matches!(s.priority, crate::core::Priority::Critical | crate::core::Priority::High))
-                .collect();
-            
-            if !high_priority_stories.is_empty() {
-                summary.push_str("### High-Priority Stories:\n");
-                for story in high_priority_stories.iter().take(5) {
-                    summary.push_str(&format!("- **{}**: {}\n", story.id, story.title));
-                    summary.push_str(&format!("  - {}\n", story.description));
-                }
-                summary.push_str("\n");
-            }
-        }
-        
-        // Tasks
-        if !analysis.tasks.is_empty() {
-            summary.push_str("## Task Breakdown\n\n");
-            
-            let incomplete_tasks: Vec<_> = analysis.tasks.iter()
-                .filter(|t| !matches!(t.status, crate::core::ImplementationStatus::Complete))
-                .collect();
-            
-            if !incomplete_tasks.is_empty() {
-                summary.push_str(&format!("### Outstanding Tasks: {}\n", incomplete_tasks.len()));
-                for task in incomplete_tasks.iter().take(10) {
-                    summary.push_str(&format!("- **{}** ({:?}): {}\n", 
-                        task.id, task.status, task.name));
-                    if let Some(effort) = &task.effort_estimate {
-                        summary.push_str(&format!("  - Effort: {}\n", effort));
-                    }
-                }
-                if incomplete_tasks.len() > 10 {
-                    summary.push_str(&format!("  ... and {} more tasks\n", incomplete_tasks.len() - 10));
-                }
-            }
-        }
-        
-        // PRD Summary
-        summary.push_str("\n## 📄 Product Requirements Summary\n");
-        summary.push_str(&format!("**Title**: {}\n\n", analysis.prd.title));
-        summary.push_str(&format!("**Overview**: {}\n\n", analysis.prd.overview));
-        
-        if !analysis.prd.features.is_empty() {
-            summary.push_str("**Key Features**:\n");
-            for feature in &analysis.prd.features {
-                summary.push_str(&format!("- **{}**: {}\n", feature.name, feature.description));
-            }
-        }
-        
-        summary.push_str(&format!("\n---\n*Generated by Codebase Analyzer v{} at {}*\n", 
-            analysis.analysis_metadata.analyzer_version,
-            analysis.analysis_metadata.analyzed_at));
-        
-        summary
-    }
     
     fn list_supported_types(&self) {
         println!("Supported Project Types:\n");
@@ -404,6 +239,50 @@ impl CliRunner {
         println!("     • User story inference");
         println!("     • Implementation status detection");
         println!("     • API call identification");
+        println!();
+        
+        println!("NestJS (Node.js Backend)");
+        println!("   File extensions: .ts, .js");
+        println!("   Detection: package.json with @nestjs/core dependency or NestJS decorators");
+        println!("   Features:");
+        println!("     • Controller, Service, Repository detection");
+        println!("     • Decorator-based pattern analysis");
+        println!("     • REST endpoint mapping");
+        println!("     • Dependency injection analysis");
+        println!("     • Module structure analysis");
+        println!();
+        
+        println!("Danet (Deno Backend - NestJS-like)");
+        println!("   File extensions: .ts, .tsx");
+        println!("   Detection: deno.json with Danet imports or Danet decorators with deno.land URLs");
+        println!("   Features:");
+        println!("     • NestJS-like decorator pattern analysis");
+        println!("     • Controller and service detection");
+        println!("     • Deno-specific import analysis");
+        println!("     • REST endpoint mapping");
+        println!("     • Module architecture analysis");
+        println!();
+        
+        println!("Fresh (Deno Fullstack)");
+        println!("   File extensions: .ts, .tsx");
+        println!("   Detection: deno.json with Fresh imports or routes/ directory structure");
+        println!("   Features:");
+        println!("     • Island architecture analysis");
+        println!("     • Route-based component detection");
+        println!("     • Handler function analysis");
+        println!("     • Server-side rendering patterns");
+        println!("     • Deno-specific patterns");
+        println!();
+        
+        println!("Oak (Deno Backend)");
+        println!("   File extensions: .ts, .tsx");
+        println!("   Detection: deno.json with Oak imports or Oak router patterns");
+        println!("   Features:");
+        println!("     • Router and middleware analysis");
+        println!("     • HTTP handler detection");
+        println!("     • REST endpoint mapping");
+        println!("     • Deno-specific patterns");
+        println!("     • Application structure analysis");
         println!();
         
         println!("Java/Spring Boot");
@@ -453,5 +332,62 @@ impl CliRunner {
         println!();
         println!("   Custom output directory for docs");
         println!("   codebase-analyzer analyze --path /path/to/project --generate-docs --docs-dir custom-docs");
+        
+        #[cfg(feature = "integrations")]
+        {
+            println!();
+            println!("   With integrations (requires --features integrations):");
+            println!("   codebase-analyzer analyze --path /path/to/project --enable-integrations");
+        }
+        
+        #[cfg(feature = "web-server")]
+        {
+            println!();
+            println!("   Start web server (requires --features web-server):");
+            println!("   codebase-analyzer serve --port 3000");
+        }
+    }
+
+    /// Run Phase 1 test - Framework Detection and Business Domain Inference
+    async fn run_phase1_test(&self, path: String, output: String) -> Result<()> {
+        use crate::core::integration_demo::Phase1Demo;
+        
+        println!("🚀 Running Phase 1 Test: Framework Detection and Business Domain Inference");
+        println!("   Project Path: {}", path);
+        println!("   Output Directory: {}", output);
+        println!();
+        
+        // Check if path exists
+        if !std::path::Path::new(&path).exists() {
+            anyhow::bail!("Path does not exist: {}", path);
+        }
+
+        // Run Phase 1 analysis
+        let demo = Phase1Demo::new(path);
+        match demo.run_phase1_analysis() {
+            Ok(result) => {
+                // Print detailed report
+                result.print_detailed_report();
+                
+                // Save results
+                if let Err(e) = result.save_results(&output) {
+                    println!("⚠️  Warning: Could not save results to {}: {}", output, e);
+                    println!("   But analysis completed successfully!");
+                } else {
+                    println!("\n💾 Results saved to: {}", output);
+                }
+                
+                println!("\n✅ Phase 1 Test Completed Successfully!");
+                println!("\n📋 Summary:");
+                println!("   • Frameworks Detected: {}", result.framework_result.detected_frameworks.len());
+                println!("   • Primary Domains: {}", result.domain_result.primary_domains.len());
+                println!("   • Secondary Domains: {}", result.domain_result.secondary_domains.len());
+                
+                Ok(())
+            }
+            Err(e) => {
+                anyhow::bail!("Phase 1 analysis failed: {}", e)
+            }
+        }
     }
 }
