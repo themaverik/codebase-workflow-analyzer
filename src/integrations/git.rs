@@ -88,7 +88,7 @@ impl GitAnalyzer {
                 author: format!("{}", commit.author().name().unwrap_or("Unknown")),
                 date: DateTime::from_timestamp(commit.time().seconds(), 0)
                     .unwrap_or_else(|| Utc::now()),
-                files_changed: Self::count_changed_files(&commit),
+                files_changed: Self::count_changed_files(&repo, &commit),
             };
 
             commits.push(commit_info);
@@ -188,17 +188,15 @@ impl GitAnalyzer {
         Ok(file_stats)
     }
 
-    fn count_changed_files(commit: &Commit) -> usize {
+    fn count_changed_files(repo: &Repository, commit: &Commit) -> usize {
         if commit.parent_count() == 0 {
             return 0;
         }
 
         if let Ok(parent) = commit.parent(0) {
             if let (Ok(tree), Ok(parent_tree)) = (commit.tree(), parent.tree()) {
-                if let Ok(repo) = commit.owner() {
-                    if let Ok(diff) = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None) {
-                        return diff.deltas().len();
-                    }
+                if let Ok(diff) = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None) {
+                    return diff.deltas().len();
                 }
             }
         }

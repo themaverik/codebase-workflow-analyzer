@@ -71,26 +71,30 @@ impl DocumentGenerator for ExecutiveSummaryGenerator {
             complete_components as f32 / analysis.components.len() as f32 * 100.0
         } else { 0.0 };
         
-        let completion_status = if completion_rate >= 90.0 { "🟢 **Excellent**" }
-                              else if completion_rate >= 70.0 { "🟡 **Good**" }
-                              else if completion_rate >= 50.0 { "🟠 **Fair**" }
-                              else { "🔴 **Poor**" };
+        let completion_status = if completion_rate >= 90.0 { "**Excellent**" }
+                              else if completion_rate >= 70.0 { "**Good**" }
+                              else if completion_rate >= 50.0 { "**Fair**" }
+                              else { "**Poor**" };
         
         content.push_str(&format!("**Implementation Progress**: {:.0}% complete ({})\n\n", completion_rate, completion_status));
         
         // Technology assessment
         let framework_assessment = match analysis.project_type {
             crate::core::ProjectType::React => "Modern frontend framework suitable for scalable user interfaces",
+            crate::core::ProjectType::NextJS => "Full-stack React framework with SSR/SSG capabilities for optimal performance",
+            crate::core::ProjectType::ExpressNodeJS => "Lightweight backend framework ideal for API development and microservices",
+            crate::core::ProjectType::NestJS => "Enterprise-grade TypeScript framework with dependency injection and modular architecture",
             crate::core::ProjectType::SpringBoot => "Enterprise-grade backend framework with robust ecosystem",
             crate::core::ProjectType::Django => "Full-featured web framework with rapid development capabilities",
             crate::core::ProjectType::Flask => "Lightweight and flexible web framework for targeted applications",
+            crate::core::ProjectType::FastAPI => "High-performance API framework with modern Python async capabilities",
             crate::core::ProjectType::Unknown => "Mixed or custom technology stack requiring evaluation",
         };
         
         content.push_str(&format!("**Technology Assessment**: {}\n\n", framework_assessment));
         
         // Risk Assessment
-        content.push_str("## ⚠ Risk Assessment\n\n");
+        content.push_str("## Risk Assessment\n\n");
         
         let incomplete_components = analysis.components.iter()
             .filter(|c| matches!(c.implementation_status, 
@@ -103,9 +107,9 @@ impl DocumentGenerator for ExecutiveSummaryGenerator {
             .count();
         
         // Implementation risk
-        let implementation_risk = if incomplete_components == 0 { "🟢 **Low**" }
-                                else if incomplete_components <= analysis.components.len() / 4 { "🟡 **Medium**" }
-                                else { "🔴 **High**" };
+        let implementation_risk = if incomplete_components == 0 { "**Low**" }
+                                else if incomplete_components <= analysis.components.len() / 4 { "**Medium**" }
+                                else { "**High**" };
         
         content.push_str(&format!("### Implementation Risk: {}\n\n", implementation_risk));
         
@@ -118,9 +122,9 @@ impl DocumentGenerator for ExecutiveSummaryGenerator {
         }
         
         // Technical complexity risk
-        let complexity_risk = if high_complexity_components == 0 { "🟢 **Low**" }
-                             else if high_complexity_components <= 3 { "🟡 **Medium**" }
-                             else { "🔴 **High**" };
+        let complexity_risk = if high_complexity_components == 0 { "**Low**" }
+                             else if high_complexity_components <= 3 { "**Medium**" }
+                             else { "**High**" };
         
         content.push_str(&format!("### Technical Complexity Risk: {}\n\n", complexity_risk));
         
@@ -136,39 +140,39 @@ impl DocumentGenerator for ExecutiveSummaryGenerator {
         if let Some(intel) = intelligent_analysis {
             content.push_str("##  Quality Assessment\n\n");
             
-            let overall_grade = if intel.quality_metrics.overall_score >= 0.9 { ("A", "🟢", "Exceptional") }
-                              else if intel.quality_metrics.overall_score >= 0.8 { ("B", "🟢", "Good") }
-                              else if intel.quality_metrics.overall_score >= 0.7 { ("C", "🟡", "Acceptable") }
-                              else if intel.quality_metrics.overall_score >= 0.6 { ("D", "🟠", "Below Average") }
-                              else { ("F", "🔴", "Poor") };
+            let overall_grade = if intel.quality_metrics.overall_score >= 0.9 { ("A", "Exceptional") }
+                              else if intel.quality_metrics.overall_score >= 0.8 { ("B", "Good") }
+                              else if intel.quality_metrics.overall_score >= 0.7 { ("C", "Acceptable") }
+                              else if intel.quality_metrics.overall_score >= 0.6 { ("D", "Below Average") }
+                              else { ("F", "Poor") };
             
-            content.push_str(&format!("### Overall Quality Grade: {} {} ({})\n\n", overall_grade.1, overall_grade.0, overall_grade.2));
+            content.push_str(&format!("### Overall Quality Grade: {} ({})\n\n", overall_grade.0, overall_grade.1));
             
             content.push_str("| Quality Metric | Score | Assessment |\n");
             content.push_str("|----------------|-------|------------|\n");
             
-            let format_assessment = |score: f32| -> (&str, &str) {
-                if score >= 0.8 { ("🟢", "Excellent") }
-                else if score >= 0.6 { ("🟡", "Good") }
-                else if score >= 0.4 { ("🟠", "Fair") }
-                else { ("🔴", "Poor") }
+            let format_assessment = |score: f32| -> &str {
+                if score >= 0.8 { "Excellent" }
+                else if score >= 0.6 { "Good" }
+                else if score >= 0.4 { "Fair" }
+                else { "Poor" }
             };
             
-            let (maintainability_icon, maintainability_text) = format_assessment(intel.quality_metrics.maintainability);
-            content.push_str(&format!("| Code Maintainability | {:.0}% | {} {} |\n", 
-                intel.quality_metrics.maintainability * 100.0, maintainability_icon, maintainability_text));
+            let maintainability_text = format_assessment(intel.quality_metrics.maintainability);
+            content.push_str(&format!("| Code Maintainability | {:.0}% | {} |\n", 
+                intel.quality_metrics.maintainability * 100.0, maintainability_text));
             
-            let (complexity_icon, complexity_text) = format_assessment(intel.quality_metrics.complexity);
-            content.push_str(&format!("| Complexity Management | {:.0}% | {} {} |\n", 
-                intel.quality_metrics.complexity * 100.0, complexity_icon, complexity_text));
+            let complexity_text = format_assessment(intel.quality_metrics.complexity);
+            content.push_str(&format!("| Complexity Management | {:.0}% | {} |\n", 
+                intel.quality_metrics.complexity * 100.0, complexity_text));
             
-            let (debt_icon, debt_text) = format_assessment(intel.quality_metrics.technical_debt_score);
-            content.push_str(&format!("| Technical Debt | {:.0}% | {} {} |\n", 
-                intel.quality_metrics.technical_debt_score * 100.0, debt_icon, debt_text));
+            let debt_text = format_assessment(intel.quality_metrics.technical_debt_score);
+            content.push_str(&format!("| Technical Debt | {:.0}% | {} |\n", 
+                intel.quality_metrics.technical_debt_score * 100.0, debt_text));
             
-            let (test_icon, test_text) = format_assessment(intel.quality_metrics.test_coverage_estimate);
-            content.push_str(&format!("| Test Coverage (Est.) | {:.0}% | {} {} |\n", 
-                intel.quality_metrics.test_coverage_estimate * 100.0, test_icon, test_text));
+            let test_text = format_assessment(intel.quality_metrics.test_coverage_estimate);
+            content.push_str(&format!("| Test Coverage (Est.) | {:.0}% | {} |\n", 
+                intel.quality_metrics.test_coverage_estimate * 100.0, test_text));
             
             content.push_str("\n");
             
@@ -178,7 +182,7 @@ impl DocumentGenerator for ExecutiveSummaryGenerator {
                 .count();
             
             if critical_issues > 0 {
-                content.push_str(&format!("### 🚨 Critical Issues Identified: {}\n\n", critical_issues));
+                content.push_str(&format!("### Critical Issues Identified: {}\n\n", critical_issues));
                 
                 for insight in intel.technical_insights.iter()
                     .filter(|i| matches!(i.severity, crate::intelligence::Severity::Critical | crate::intelligence::Severity::High))
@@ -342,11 +346,11 @@ impl DocumentGenerator for ExecutiveSummaryGenerator {
         
         let recommendation = if completion_rate >= 80.0 && 
                                intelligent_analysis.map_or(true, |i| i.quality_metrics.overall_score >= 0.7) {
-            "🟢 **GO**: Proceed with production deployment planning"
+            "**GO**: Proceed with production deployment planning"
         } else if completion_rate >= 60.0 {
-            "🟡 **CONDITIONAL GO**: Complete identified issues before production"
+            "**CONDITIONAL GO**: Complete identified issues before production"
         } else {
-            "🔴 **NO-GO**: Significant development required before production consideration"
+            "**NO-GO**: Significant development required before production consideration"
         };
         
         content.push_str(&format!("{}\n\n", recommendation));

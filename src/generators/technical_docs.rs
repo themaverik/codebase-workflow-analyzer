@@ -71,6 +71,30 @@ impl DocumentGenerator for TechnicalDocumentationGenerator {
                 - Modular design with blueprints\n\
                 - Extensible through third-party packages\n"
             },
+            crate::core::ProjectType::NextJS => {
+                "**Full-Stack Framework**: Next.js\n\
+                - Server-side rendering and static generation\n\
+                - File-based routing system\n\
+                - Built-in optimization features\n"
+            },
+            crate::core::ProjectType::ExpressNodeJS => {
+                "**Backend Framework**: Express.js\n\
+                - Minimal Node.js web framework\n\
+                - Middleware-based architecture\n\
+                - RESTful API capabilities\n"
+            },
+            crate::core::ProjectType::NestJS => {
+                "**Backend Framework**: NestJS with TypeScript\n\
+                - Modular architecture with dependency injection\n\
+                - Decorator-based programming model\n\
+                - Built-in support for testing and documentation\n"
+            },
+            crate::core::ProjectType::FastAPI => {
+                "**API Framework**: FastAPI\n\
+                - High-performance Python framework\n\
+                - Automatic validation and documentation\n\
+                - Async/await support\n"
+            },
             crate::core::ProjectType::Unknown => {
                 "**Technology Stack**: Mixed or Unknown\n\
                 - Multiple technologies detected\n\

@@ -4,7 +4,8 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use walkdir;
 
-use crate::core::framework_detector::{Framework, LanguageEcosystem, FrameworkDetectionResult};
+use crate::core::framework_detector::{FrameworkDetectionResult};
+use crate::core::types::{Framework, LanguageEcosystem};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum BusinessDomain {
@@ -148,6 +149,7 @@ impl BusinessDomainEngine {
             Framework::SpringBoot => self.analyze_spring_framework_domains(),
             Framework::Danet => self.analyze_danet_framework_domains(),
             Framework::Unknown => Ok(HashMap::new()),
+            _ => Ok(HashMap::new()), // TODO: Implement domain analysis for other frameworks
         }
     }
 
@@ -425,8 +427,21 @@ impl BusinessDomainEngine {
     }
 
     fn analyze_nestjs_framework_domains(&self) -> Result<HashMap<BusinessDomain, Vec<DomainEvidence>>, Box<dyn std::error::Error>> {
-        // TODO: Implement NestJS domain analysis
-        Ok(HashMap::new())
+        let mut domain_evidence: HashMap<BusinessDomain, Vec<DomainEvidence>> = HashMap::new();
+
+        // Analyze NestJS controllers
+        self.analyze_nestjs_controllers(&mut domain_evidence)?;
+        
+        // Analyze NestJS services
+        self.analyze_nestjs_services(&mut domain_evidence)?;
+        
+        // Analyze NestJS file structure
+        self.analyze_nestjs_file_structure(&mut domain_evidence)?;
+
+        // Analyze NestJS use cases
+        self.analyze_nestjs_usecases(&mut domain_evidence)?;
+
+        Ok(domain_evidence)
     }
 
     fn analyze_nextjs_framework_domains(&self) -> Result<HashMap<BusinessDomain, Vec<DomainEvidence>>, Box<dyn std::error::Error>> {
@@ -461,5 +476,233 @@ impl BusinessDomainEngine {
         
         let secondary = domains.split_off(split_point);
         (domains, secondary)
+    }
+
+    /// Analyze NestJS controllers for business domain patterns
+    fn analyze_nestjs_controllers(&self, domain_evidence: &mut HashMap<BusinessDomain, Vec<DomainEvidence>>) -> Result<(), Box<dyn std::error::Error>> {
+        let path = Path::new(&self.codebase_path);
+        
+        for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() && 
+               entry.path().extension().map_or(false, |ext| ext == "ts") &&
+               entry.path().to_string_lossy().contains("controller") {
+                
+                if let Ok(content) = fs::read_to_string(entry.path()) {
+                    // Authentication controllers
+                    if content.contains("@Controller('auth')") || 
+                       content.contains("@Controller('/auth')") ||
+                       entry.path().to_string_lossy().contains("auth") {
+                        domain_evidence.entry(BusinessDomain::Authentication).or_insert_with(Vec::new).push(
+                            DomainEvidence {
+                                evidence_type: DomainEvidenceType::RoutePattern,
+                                source: "NestJS controller".to_string(),
+                                pattern: "Authentication controller".to_string(),
+                                confidence_weight: 0.4,
+                                framework_context: Some(Framework::NestJS),
+                            }
+                        );
+                    }
+
+                    // User management controllers
+                    if content.contains("@Controller('users')") || 
+                       content.contains("@Controller('/users')") ||
+                       content.contains("@Controller('user')") ||
+                       entry.path().to_string_lossy().contains("user") {
+                        domain_evidence.entry(BusinessDomain::UserManagement).or_insert_with(Vec::new).push(
+                            DomainEvidence {
+                                evidence_type: DomainEvidenceType::RoutePattern,
+                                source: "NestJS controller".to_string(),
+                                pattern: "User management controller".to_string(),
+                                confidence_weight: 0.35,
+                                framework_context: Some(Framework::NestJS),
+                            }
+                        );
+                    }
+
+                    // Notification controllers
+                    if content.contains("@Controller('notifications')") || 
+                       content.contains("@Controller('/notifications')") ||
+                       content.contains("@Controller('notification')") ||
+                       entry.path().to_string_lossy().contains("notification") {
+                        domain_evidence.entry(BusinessDomain::Notification).or_insert_with(Vec::new).push(
+                            DomainEvidence {
+                                evidence_type: DomainEvidenceType::RoutePattern,
+                                source: "NestJS controller".to_string(),
+                                pattern: "Notification controller".to_string(),
+                                confidence_weight: 0.4,
+                                framework_context: Some(Framework::NestJS),
+                            }
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Analyze NestJS services for business domain patterns
+    fn analyze_nestjs_services(&self, domain_evidence: &mut HashMap<BusinessDomain, Vec<DomainEvidence>>) -> Result<(), Box<dyn std::error::Error>> {
+        let path = Path::new(&self.codebase_path);
+        
+        for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() && 
+               entry.path().extension().map_or(false, |ext| ext == "ts") &&
+               entry.path().to_string_lossy().contains("service") {
+                
+                if let Ok(content) = fs::read_to_string(entry.path()) {
+                    // Service class names
+                    if content.contains("class AuthService") || 
+                       content.contains("class AuthenticationService") ||
+                       entry.path().to_string_lossy().contains("auth") {
+                        domain_evidence.entry(BusinessDomain::Authentication).or_insert_with(Vec::new).push(
+                            DomainEvidence {
+                                evidence_type: DomainEvidenceType::ServiceName,
+                                source: "NestJS service".to_string(),
+                                pattern: "AuthService/AuthenticationService".to_string(),
+                                confidence_weight: 0.3,
+                                framework_context: Some(Framework::NestJS),
+                            }
+                        );
+                    }
+
+                    if content.contains("class UserService") || 
+                       content.contains("class UserManagementService") ||
+                       entry.path().to_string_lossy().contains("user") {
+                        domain_evidence.entry(BusinessDomain::UserManagement).or_insert_with(Vec::new).push(
+                            DomainEvidence {
+                                evidence_type: DomainEvidenceType::ServiceName,
+                                source: "NestJS service".to_string(),
+                                pattern: "UserService/UserManagementService".to_string(),
+                                confidence_weight: 0.3,
+                                framework_context: Some(Framework::NestJS),
+                            }
+                        );
+                    }
+
+                    if content.contains("class NotificationService") ||
+                       content.contains("class NotificationsService") ||
+                       entry.path().to_string_lossy().contains("notification") {
+                        domain_evidence.entry(BusinessDomain::Notification).or_insert_with(Vec::new).push(
+                            DomainEvidence {
+                                evidence_type: DomainEvidenceType::ServiceName,
+                                source: "NestJS service".to_string(),
+                                pattern: "NotificationService".to_string(),
+                                confidence_weight: 0.35,
+                                framework_context: Some(Framework::NestJS),
+                            }
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Analyze NestJS file structure for business domain patterns
+    fn analyze_nestjs_file_structure(&self, domain_evidence: &mut HashMap<BusinessDomain, Vec<DomainEvidence>>) -> Result<(), Box<dyn std::error::Error>> {
+        let path = Path::new(&self.codebase_path);
+
+        // Check for domain-specific directories
+        if path.join("src/auth").is_dir() || path.join("src/authentication").is_dir() {
+            domain_evidence.entry(BusinessDomain::Authentication).or_insert_with(Vec::new).push(
+                DomainEvidence {
+                    evidence_type: DomainEvidenceType::FileStructure,
+                    source: "Directory structure".to_string(),
+                    pattern: "Auth directory".to_string(),
+                    confidence_weight: 0.2,
+                    framework_context: Some(Framework::NestJS),
+                }
+            );
+        }
+
+        if path.join("src/users").is_dir() || path.join("src/user").is_dir() {
+            domain_evidence.entry(BusinessDomain::UserManagement).or_insert_with(Vec::new).push(
+                DomainEvidence {
+                    evidence_type: DomainEvidenceType::FileStructure,
+                    source: "Directory structure".to_string(),
+                    pattern: "Users directory".to_string(),
+                    confidence_weight: 0.2,
+                    framework_context: Some(Framework::NestJS),
+                }
+            );
+        }
+
+        if path.join("src/notifications").is_dir() || path.join("src/notification").is_dir() {
+            domain_evidence.entry(BusinessDomain::Notification).or_insert_with(Vec::new).push(
+                DomainEvidence {
+                    evidence_type: DomainEvidenceType::FileStructure,
+                    source: "Directory structure".to_string(),
+                    pattern: "Notifications directory".to_string(),
+                    confidence_weight: 0.25,
+                    framework_context: Some(Framework::NestJS),
+                }
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Analyze NestJS use cases for business domain patterns  
+    fn analyze_nestjs_usecases(&self, domain_evidence: &mut HashMap<BusinessDomain, Vec<DomainEvidence>>) -> Result<(), Box<dyn std::error::Error>> {
+        let path = Path::new(&self.codebase_path);
+        
+        for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() && 
+               entry.path().extension().map_or(false, |ext| ext == "ts") &&
+               (entry.path().to_string_lossy().contains("usecase") || entry.path().to_string_lossy().contains("usecases")) {
+                
+                let file_path = entry.path().to_string_lossy();
+                
+                // Notification use cases
+                if file_path.contains("notification") {
+                    if file_path.contains("markAsRead") || 
+                       file_path.contains("markAllAsRead") ||
+                       file_path.contains("getAllNotifications") ||
+                       file_path.contains("markAsDeleted") ||
+                       file_path.contains("send") ||
+                       file_path.contains("create") {
+                        domain_evidence.entry(BusinessDomain::Notification).or_insert_with(Vec::new).push(
+                            DomainEvidence {
+                                evidence_type: DomainEvidenceType::MethodName,
+                                source: "NestJS use case".to_string(),
+                                pattern: "Notification use cases".to_string(),
+                                confidence_weight: 0.3,
+                                framework_context: Some(Framework::NestJS),
+                            }
+                        );
+                    }
+                }
+
+                // Authentication use cases
+                if file_path.contains("auth") {
+                    domain_evidence.entry(BusinessDomain::Authentication).or_insert_with(Vec::new).push(
+                        DomainEvidence {
+                            evidence_type: DomainEvidenceType::MethodName,
+                            source: "NestJS use case".to_string(),
+                            pattern: "Authentication use cases".to_string(),
+                            confidence_weight: 0.3,
+                            framework_context: Some(Framework::NestJS),
+                        }
+                    );
+                }
+
+                // User management use cases
+                if file_path.contains("user") {
+                    domain_evidence.entry(BusinessDomain::UserManagement).or_insert_with(Vec::new).push(
+                        DomainEvidence {
+                            evidence_type: DomainEvidenceType::MethodName,
+                            source: "NestJS use case".to_string(),
+                            pattern: "User management use cases".to_string(),
+                            confidence_weight: 0.3,
+                            framework_context: Some(Framework::NestJS),
+                        }
+                    );
+                }
+            }
+        }
+
+        Ok(())
     }
 }

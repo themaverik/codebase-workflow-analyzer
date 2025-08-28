@@ -112,7 +112,7 @@ impl DocumentGenerator for UserStoryGenerator {
             
             // High risk stories
             if high_risk_stories > 0 {
-                content.push_str("### ⚠ High Risk Stories\n\n");
+                content.push_str("### High Risk Stories\n\n");
                 let high_risk_list: Vec<_> = intel.enhanced_stories.iter()
                     .filter(|s| matches!(s.implementation_risk, crate::intelligence::Risk::High | crate::intelligence::Risk::Critical))
                     .collect();

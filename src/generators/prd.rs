@@ -74,9 +74,13 @@ impl DocumentGenerator for PRDGenerator {
         content.push_str("### 2.2 Value Proposition\n\n");
         let framework_name = match analysis.project_type {
             crate::core::ProjectType::React => "React-based frontend application",
+            crate::core::ProjectType::NextJS => "Next.js full-stack application",
+            crate::core::ProjectType::ExpressNodeJS => "Express.js backend service",
+            crate::core::ProjectType::NestJS => "NestJS backend API service",
             crate::core::ProjectType::SpringBoot => "Spring Boot backend service",
             crate::core::ProjectType::Django => "Django web application",
             crate::core::ProjectType::Flask => "Flask web service",
+            crate::core::ProjectType::FastAPI => "FastAPI backend service",
             crate::core::ProjectType::Unknown => "Software application",
         };
         
@@ -212,9 +216,13 @@ impl DocumentGenerator for PRDGenerator {
         content.push_str("### 6.2 System Architecture\n\n");
         let architecture_desc = match analysis.project_type {
             crate::core::ProjectType::React => "Single-page application (SPA) architecture with component-based design",
+            crate::core::ProjectType::NextJS => "Server-side rendered (SSR) and static site generation (SSG) architecture",
+            crate::core::ProjectType::ExpressNodeJS => "RESTful API server architecture with middleware-based request processing",
+            crate::core::ProjectType::NestJS => "Modular backend architecture with dependency injection and decorator-based programming",
             crate::core::ProjectType::SpringBoot => "Layered architecture with REST API endpoints and service layer pattern",
             crate::core::ProjectType::Django => "Model-View-Template (MVT) architecture with Django ORM",
             crate::core::ProjectType::Flask => "Microframework architecture with modular blueprint organization",
+            crate::core::ProjectType::FastAPI => "Async API architecture with automatic request/response validation",
             crate::core::ProjectType::Unknown => "Modular software architecture",
         };
         content.push_str(&format!("**Architecture Pattern**: {}\n\n", architecture_desc));

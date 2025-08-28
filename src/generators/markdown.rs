@@ -134,7 +134,7 @@ impl DocumentGenerator for MarkdownGenerator {
             content.push_str("\n");
             
             // Detailed stories
-            content.push_str("### 📝 Story Details\n\n");
+            content.push_str("### Story Details\n\n");
             
             for story in &analysis.user_stories {
                 content.push_str(&format!("#### {} - {}\n\n", story.id, story.title));
@@ -216,8 +216,9 @@ impl DocumentGenerator for MarkdownGenerator {
                 
                 for task in tasks {
                     let components = task.related_components.join(", ");
+                    let effort = task.effort_estimate.as_ref().map(|e| e.as_str()).unwrap_or("Not specified");
                     content.push_str(&format!("| {} | {} | {:?} | {} | {} |\n", 
-                        task.id, task.title, task.task_type, task.estimated_effort, components));
+                        task.id, task.name, task.task_type, effort, components));
                 }
                 content.push_str("\n");
             }
@@ -304,7 +305,7 @@ impl DocumentGenerator for MarkdownGenerator {
         content.push_str(&format!("| Confidence Score | {:.1}% |\n", analysis.analysis_metadata.confidence_score * 100.0));
         
         if !analysis.analysis_metadata.warnings.is_empty() {
-            content.push_str("\n### ⚠ Warnings\n\n");
+            content.push_str("\n### Warnings\n\n");
             for warning in &analysis.analysis_metadata.warnings {
                 content.push_str(&format!("- {}\n", warning));
             }

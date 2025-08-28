@@ -1,9 +1,10 @@
 use crate::core::{
-    CodebaseAnalysis, ComponentInfo, UserStory, Task, Priority, Complexity, 
-    ImplementationStatus, TaskType, ComponentType
+    CodebaseAnalysis, ComponentInfo, UserStory, Priority, Complexity, 
+    ImplementationStatus, ComponentType
 };
-use regex::Regex;
-use std::collections::HashMap;
+
+pub mod llm_client;
+pub use llm_client::*;
 
 pub struct IntelligenceEngine {
     patterns: PatternDatabase,
@@ -47,14 +48,14 @@ pub struct AntiPattern {
     pub recommendations: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum QualityImpact {
     Positive,
     Negative,
     Neutral,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum Severity {
     Low,
     Medium,

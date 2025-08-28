@@ -2,30 +2,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
+use anyhow::Result;
 
-use crate::core::{DetectedFramework, UsageExtent};
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum LanguageEcosystem {
-    Python,      // .py files, requirements.txt, pyproject.toml
-    JavaScript,  // .js files, package.json (no TypeScript)
-    TypeScript,  // .ts/.tsx files, tsconfig.json, package.json
-    Java,        // .java files, pom.xml, build.gradle
-    Deno,        // .ts files with URL imports, deno.json
-    Mixed,       // Multiple ecosystems detected
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum Framework {
-    Flask,
-    FastAPI,
-    React,
-    NestJS,
-    Danet,
-    SpringBoot,
-    NextJS,
-    Unknown,
-}
+use crate::core::UsageExtent;
+use crate::core::types::{Framework, LanguageEcosystem};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FrameworkDetectionResult {
@@ -82,6 +62,8 @@ impl FrameworkDetector {
             LanguageEcosystem::Java => self.detect_java_frameworks()?,
             LanguageEcosystem::Deno => self.detect_deno_frameworks()?,
             LanguageEcosystem::Mixed => self.detect_mixed_frameworks()?,
+            LanguageEcosystem::Rust => Vec::new(), // TODO: Implement Rust framework detection
+            LanguageEcosystem::Go => Vec::new(), // TODO: Implement Go framework detection
         };
 
         // Step 3: Create confidence summary
@@ -98,12 +80,12 @@ impl FrameworkDetector {
     pub fn detect_language_ecosystem(&self) -> Result<LanguageEcosystem, Box<dyn std::error::Error>> {
         let mut scores = HashMap::new();
         
-        // File extension analysis
+        // File extension analysis (excluding common ignore directories)
         let file_counts = self.count_files_by_extension()?;
         
         // Python ecosystem detection
         if *file_counts.get(".py").unwrap_or(&0) > 0 {
-            let python_score = file_counts.get(".py").unwrap_or(&0) * 10;
+            let python_score = *file_counts.get(".py").unwrap_or(&0) * 10;
             scores.insert(LanguageEcosystem::Python, python_score);
         }
         
@@ -111,29 +93,31 @@ impl FrameworkDetector {
         let ts_files = *file_counts.get(".ts").unwrap_or(&0) + *file_counts.get(".tsx").unwrap_or(&0);
         if ts_files > 0 {
             if self.has_file("deno.json")? || self.has_url_imports()? {
-                scores.insert(LanguageEcosystem::Deno, &ts_files * 10);
+                scores.insert(LanguageEcosystem::Deno, ts_files * 10);
             } else {
-                scores.insert(LanguageEcosystem::TypeScript, &ts_files * 10);
+                scores.insert(LanguageEcosystem::TypeScript, ts_files * 10);
             }
         }
         
         // JavaScript ecosystem detection
         if *file_counts.get(".js").unwrap_or(&0) > 0 && !self.has_file("tsconfig.json")? {
-            let js_score = file_counts.get(".js").unwrap_or(&0) * 10;
+            let js_score = *file_counts.get(".js").unwrap_or(&0) * 10;
             scores.insert(LanguageEcosystem::JavaScript, js_score);
         }
         
         // Java ecosystem detection
         if *file_counts.get(".java").unwrap_or(&0) > 0 {
-            let java_score = file_counts.get(".java").unwrap_or(&0) * 10;
+            let java_score = *file_counts.get(".java").unwrap_or(&0) * 10;
             scores.insert(LanguageEcosystem::Java, java_score);
         }
         
-        // Determine primary ecosystem
-        if scores.len() > 1 {
+        // Determine primary ecosystem - prioritize the one with highest score
+        if scores.is_empty() {
             Ok(LanguageEcosystem::Mixed)
         } else {
-            Ok(scores.into_keys().next().unwrap_or(LanguageEcosystem::Mixed))
+            // Return the ecosystem with the highest score
+            let primary_ecosystem = scores.into_iter().max_by_key(|(_, score)| *score).unwrap().0;
+            Ok(primary_ecosystem)
         }
     }
 
@@ -230,12 +214,15 @@ impl FrameworkDetector {
         }
         
         if confidence >= 0.3 {
+            // Cap confidence at 1.0 (100%)
+            let normalized_confidence = confidence.min(1.0);
+            
             Ok(Some(EnhancedDetectedFramework {
                 framework: Framework::Flask,
                 version: self.extract_version_from_requirements("Flask")?,
-                confidence,
+                confidence: normalized_confidence,
                 evidence,
-                usage_extent: self.determine_usage_extent(confidence),
+                usage_extent: self.determine_usage_extent(normalized_confidence),
                 ecosystem: LanguageEcosystem::Python,
             }))
         } else {
@@ -309,12 +296,15 @@ impl FrameworkDetector {
         }
         
         if confidence >= 0.3 {
+            // Cap confidence at 1.0 (100%)
+            let normalized_confidence = confidence.min(1.0);
+            
             Ok(Some(EnhancedDetectedFramework {
                 framework: Framework::FastAPI,
                 version: self.extract_version_from_requirements("fastapi")?,
-                confidence,
+                confidence: normalized_confidence,
                 evidence,
-                usage_extent: self.determine_usage_extent(confidence),
+                usage_extent: self.determine_usage_extent(normalized_confidence),
                 ecosystem: LanguageEcosystem::Python,
             }))
         } else {
@@ -446,12 +436,15 @@ impl FrameworkDetector {
                 LanguageEcosystem::JavaScript 
             };
             
+            // Cap confidence at 1.0 (100%)
+            let normalized_confidence = confidence.min(1.0);
+            
             Ok(Some(EnhancedDetectedFramework {
                 framework: Framework::React,
                 version: self.extract_version_from_package("react")?,
-                confidence,
+                confidence: normalized_confidence,
                 evidence,
-                usage_extent: self.determine_usage_extent(confidence),
+                usage_extent: self.determine_usage_extent(normalized_confidence),
                 ecosystem,
             }))
         } else {
@@ -538,12 +531,15 @@ impl FrameworkDetector {
         }
         
         if confidence >= 0.3 {
+            // Cap confidence at 1.0 (100%)
+            let normalized_confidence = confidence.min(1.0);
+            
             Ok(Some(EnhancedDetectedFramework {
                 framework: Framework::NestJS,
                 version: self.extract_version_from_package("@nestjs/core")?,
-                confidence,
+                confidence: normalized_confidence,
                 evidence,
-                usage_extent: self.determine_usage_extent(confidence),
+                usage_extent: self.determine_usage_extent(normalized_confidence),
                 ecosystem: LanguageEcosystem::TypeScript,
             }))
         } else {
@@ -620,12 +616,15 @@ impl FrameworkDetector {
                 LanguageEcosystem::JavaScript 
             };
             
+            // Cap confidence at 1.0 (100%)
+            let normalized_confidence = confidence.min(1.0);
+            
             Ok(Some(EnhancedDetectedFramework {
                 framework: Framework::NextJS,
                 version: self.extract_version_from_package("next")?,
-                confidence,
+                confidence: normalized_confidence,
                 evidence,
-                usage_extent: self.determine_usage_extent(confidence),
+                usage_extent: self.determine_usage_extent(normalized_confidence),
                 ecosystem,
             }))
         } else {
@@ -638,8 +637,32 @@ impl FrameworkDetector {
         let mut counts = HashMap::new();
         let path = Path::new(&self.codebase_path);
         
+        // Common directories to ignore during language detection
+        let ignore_dirs = vec![
+            "venv", "env", ".env", "virtualenv", ".venv",  // Python virtual environments
+            "node_modules", ".pnpm-store",                  // Node.js dependencies
+            ".git", ".svn", ".hg",                          // Version control
+            "target", "build", "dist", "out",              // Build outputs
+            "__pycache__", ".pytest_cache",                // Python cache
+            ".idea", ".vscode", ".vs",                      // IDE files
+            "vendor",                                       // Vendor dependencies
+            ".specstory",                                   // Our tool's output
+        ];
+        
         if path.is_dir() {
-            for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+            for entry in walkdir::WalkDir::new(path)
+                .into_iter()
+                .filter_entry(|e| {
+                    // Skip ignored directories
+                    if e.file_type().is_dir() {
+                        if let Some(name) = e.file_name().to_str() {
+                            return !ignore_dirs.contains(&name);
+                        }
+                    }
+                    true
+                })
+                .filter_map(|e| e.ok()) 
+            {
                 if entry.file_type().is_file() {
                     if let Some(extension) = entry.path().extension() {
                         let ext = format!(".{}", extension.to_string_lossy());
@@ -671,7 +694,30 @@ impl FrameworkDetector {
     fn has_import_pattern(&self, pattern: &str) -> Result<bool, Box<dyn std::error::Error>> {
         let path = Path::new(&self.codebase_path);
         
-        for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+        // Common directories to ignore
+        let ignore_dirs = vec![
+            "venv", "env", ".env", "virtualenv", ".venv",  // Python virtual environments
+            "node_modules", ".pnpm-store",                  // Node.js dependencies
+            ".git", ".svn", ".hg",                          // Version control
+            "target", "build", "dist", "out",              // Build outputs
+            "__pycache__", ".pytest_cache",                // Python cache
+            ".idea", ".vscode", ".vs",                      // IDE files
+            "vendor",                                       // Vendor dependencies
+        ];
+        
+        for entry in walkdir::WalkDir::new(path)
+            .into_iter()
+            .filter_entry(|e| {
+                // Skip ignored directories
+                if e.file_type().is_dir() {
+                    if let Some(name) = e.file_name().to_str() {
+                        return !ignore_dirs.contains(&name);
+                    }
+                }
+                true
+            })
+            .filter_map(|e| e.ok()) 
+        {
             if entry.file_type().is_file() {
                 if let Some(extension) = entry.path().extension() {
                     if extension == "py" {
@@ -857,14 +903,15 @@ impl FrameworkDetector {
 }
 
 // Convert to legacy DetectedFramework for compatibility
-impl From<EnhancedDetectedFramework> for DetectedFramework {
-    fn from(enhanced: EnhancedDetectedFramework) -> Self {
-        DetectedFramework {
-            name: format!("{:?}", enhanced.framework),
-            version: enhanced.version,
-            confidence: enhanced.confidence,
-            evidence: enhanced.evidence.into_iter().map(|e| e.pattern).collect(),
-            usage_extent: enhanced.usage_extent,
-        }
-    }
-}
+// TODO: Re-enable when DetectedFramework is available
+// impl From<EnhancedDetectedFramework> for DetectedFramework {
+//     fn from(enhanced: EnhancedDetectedFramework) -> Self {
+//         DetectedFramework {
+//             name: format!("{:?}", enhanced.framework),
+//             version: enhanced.version,
+//             confidence: enhanced.confidence,
+//             evidence: enhanced.evidence.into_iter().map(|e| e.pattern).collect(),
+//             usage_extent: enhanced.usage_extent,
+//         }
+//     }
+// }

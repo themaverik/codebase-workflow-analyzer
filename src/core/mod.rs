@@ -1,8 +1,13 @@
 use serde::{Deserialize, Serialize};
 
 pub mod framework_detector;
+pub mod enhanced_framework_detector;
 pub mod business_domain_engine;
 pub mod integration_demo;
+pub mod ast_analyzer;
+pub mod extractors;
+pub mod types;
+pub mod ast_integration_test;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodebaseAnalysis {

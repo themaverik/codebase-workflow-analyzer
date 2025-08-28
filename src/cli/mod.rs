@@ -50,6 +50,24 @@ pub enum Commands {
         output: String,
     },
     
+    /// Test Phase 2A: AST Integration
+    TestAst {
+        /// Path to the project directory
+        #[arg(short, long)]
+        path: Option<String>,
+    },
+    
+    /// Test Phase 2B: LLM Integration
+    TestLlm {
+        /// Path to the project directory
+        #[arg(short, long)]
+        path: Option<String>,
+        
+        /// Enable LLM analysis (requires Ollama running)
+        #[arg(long)]
+        enable_llm: bool,
+    },
+    
     /// Start web server (requires --features web-server)
     #[cfg(feature = "web-server")]
     Serve {
@@ -91,6 +109,12 @@ impl CliRunner {
             }
             Commands::TestPhase1 { path, output } => {
                 self.run_phase1_test(path, output).await
+            },
+            Commands::TestAst { path } => {
+                self.run_ast_test(path).await
+            }
+            Commands::TestLlm { path, enable_llm } => {
+                self.run_llm_test(path, enable_llm).await
             }
             #[cfg(feature = "web-server")]
             Commands::Serve { port } => {
@@ -389,5 +413,97 @@ impl CliRunner {
                 anyhow::bail!("Phase 1 analysis failed: {}", e)
             }
         }
+    }
+
+    async fn run_ast_test(&self, path: Option<String>) -> Result<()> {
+        println!("🚀 Starting AST Integration Test (Phase 2A)");
+        
+        // Use current directory if no path provided
+        let test_path = path.unwrap_or_else(|| ".".to_string());
+        
+        // First test basic AST analyzer creation
+        crate::core::ast_integration_test::run_basic_ast_test()?;
+        
+        // Then test with actual codebase
+        if std::path::Path::new(&test_path).exists() {
+            println!("\n🔍 Testing AST on path: {}", test_path);
+            crate::core::ast_integration_test::test_ast_integration_with_path(&test_path).await?;
+        } else {
+            println!("⚠️  Path {} does not exist, skipping codebase test", test_path);
+        }
+        
+        println!("✅ AST Integration test completed successfully!");
+        Ok(())
+    }
+    
+    async fn run_llm_test(&self, path: Option<String>, enable_llm: bool) -> Result<()> {
+        use crate::core::enhanced_framework_detector::EnhancedFrameworkDetector;
+        use crate::intelligence::llm_client::ModelConfig;
+        
+        println!("🚀 Starting LLM Integration Test (Phase 2B)");
+        
+        // Use current directory if no path provided
+        let test_path = path.unwrap_or_else(|| ".".to_string());
+        
+        // Check if path exists
+        if !std::path::Path::new(&test_path).exists() {
+            anyhow::bail!("Path does not exist: {}", test_path);
+        }
+        
+        println!("🔍 Testing hierarchical analysis on path: {}", test_path);
+        
+        // Create enhanced detector with AST analysis
+        let mut detector = EnhancedFrameworkDetector::new(test_path.clone())?
+            .with_ast_analysis()?;
+        
+        // Add LLM analysis if requested
+        if enable_llm {
+            println!("🧠 Initializing LLM integration...");
+            detector = detector.with_llm_analysis(Some(ModelConfig::default())).await?;
+        } else {
+            println!("⚠️  LLM analysis disabled, running without LLM integration");
+        }
+        
+        // Run enhanced analysis
+        let result = detector.detect_frameworks_enhanced().await?;
+        
+        // Display results
+        println!("\n📊 Hierarchical Analysis Results:");
+        println!("    Language Ecosystem: {}", result.primary_ecosystem);
+        println!("    Detected Frameworks: {}", result.detected_frameworks.len());
+        println!("    Code Segments: {}", result.code_segments.len());
+        
+        if let Some(ast_analysis) = &result.ast_analysis {
+            println!("    AST Analysis:");
+            println!("      - Functions: {}", ast_analysis.segment_statistics.function_count);
+            println!("      - Classes: {}", ast_analysis.segment_statistics.class_count);
+            println!("      - Interfaces: {}", ast_analysis.segment_statistics.interface_count);
+        }
+        
+        if let Some(llm_analysis) = &result.llm_analysis {
+            println!("    LLM Analysis:");
+            println!("      - Available: {}", llm_analysis.llm_available);
+            println!("      - Processing Time: {}ms", llm_analysis.processing_time_ms);
+            println!("      - Segments Analyzed: {}", llm_analysis.business_domain_analysis.segments.len());
+            println!("      - Domain Distribution: {:?}", 
+                llm_analysis.business_domain_analysis.summary.domain_distribution.keys().collect::<Vec<_>>());
+        }
+        
+        // Show framework analysis
+        println!("\n🔍 Framework Analysis:");
+        for framework in &result.detected_frameworks[..std::cmp::min(5, result.detected_frameworks.len())] {
+            println!("  - {}: {:.1}% confidence", framework.framework, framework.confidence * 100.0);
+            if let Some(ast_evidence) = &framework.ast_evidence {
+                if ast_evidence.relevant_segments > 0 {
+                    println!("    AST Segments: {}", ast_evidence.relevant_segments);
+                    if !ast_evidence.framework_specific_patterns.is_empty() {
+                        println!("    Patterns: {:?}", &ast_evidence.framework_specific_patterns[..std::cmp::min(2, ast_evidence.framework_specific_patterns.len())]);
+                    }
+                }
+            }
+        }
+        
+        println!("\n✅ LLM Integration test completed successfully!");
+        Ok(())
     }
 }
