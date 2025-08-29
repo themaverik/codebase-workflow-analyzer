@@ -428,6 +428,7 @@ impl EnhancedFrameworkDetector {
                 average_confidence: 0.0,
                 key_patterns: Vec::new(),
             },
+            project_analysis: None,
             processing_time_ms: 0,
         }
     }

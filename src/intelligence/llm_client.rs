@@ -83,7 +83,30 @@ pub struct SegmentAnalysis {
 pub struct BatchAnalysisResult {
     pub segments: Vec<SegmentAnalysis>,
     pub summary: AnalysisSummary,
+    pub project_analysis: Option<ProjectAnalysis>,
     pub processing_time_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectAnalysis {
+    pub primary_business_domain: String,
+    pub project_type: String,
+    pub functional_requirements: RequirementCategory,
+    pub non_functional_requirements: RequirementCategory,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RequirementCategory {
+    pub description: String,
+    pub domains: HashMap<String, DomainAnalysis>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DomainAnalysis {
+    pub description: String,
+    pub segment_ids: Vec<String>,
+    pub confidence: f32,
+    pub evidence: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,6 +238,7 @@ impl LocalLLMManager {
         Ok(BatchAnalysisResult {
             segments: all_analyses,
             summary,
+            project_analysis: None, // TODO: Extract project analysis from LLM response
             processing_time_ms: processing_time,
         })
     }
@@ -314,54 +338,117 @@ impl LocalLLMManager {
         batch: &[CodeSegment],
     ) -> Result<Vec<SegmentAnalysis>> {
         let mut analyses = Vec::new();
+        
+        // Try to parse the new business-focused structure first
+        if let Some(functional_reqs) = json.get("functional_requirements").and_then(|f| f.get("domains")) {
+            analyses.extend(self.parse_domain_requirements(functional_reqs, "Functional")?);
+        }
+        
+        if let Some(non_functional_reqs) = json.get("non_functional_requirements").and_then(|f| f.get("domains")) {
+            analyses.extend(self.parse_domain_requirements(non_functional_reqs, "Non-Functional")?);
+        }
+        
+        // Fallback to old structure if new structure not found
+        if analyses.is_empty() {
+            if let Some(segments) = json.get("segments").and_then(|s| s.as_array()) {
+                for (idx, segment_json) in segments.iter().enumerate() {
+                    if idx >= batch.len() {
+                        break;
+                    }
 
-        if let Some(segments) = json.get("segments").and_then(|s| s.as_array()) {
-            for (idx, segment_json) in segments.iter().enumerate() {
-                if idx >= batch.len() {
-                    break;
+                    let analysis = SegmentAnalysis {
+                        segment_id: format!("segment_{}", idx),
+                        primary_domain: segment_json
+                            .get("primary_domain")
+                            .and_then(|d| d.as_str())
+                            .map(|s| s.to_string()),
+                        confidence: segment_json
+                            .get("confidence")
+                            .and_then(|c| c.as_f64())
+                            .unwrap_or(0.0) as f32,
+                        evidence: segment_json
+                            .get("evidence")
+                            .and_then(|e| e.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        secondary_domains: segment_json
+                            .get("secondary_domains")
+                            .and_then(|e| e.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        quality_score: segment_json
+                            .get("quality_score")
+                            .and_then(|q| q.as_f64())
+                            .map(|q| q as f32),
+                        patterns: Vec::new(),
+                    };
+
+                    analyses.push(analysis);
                 }
-
-                let analysis = SegmentAnalysis {
-                    segment_id: format!("segment_{}", idx),
-                    primary_domain: segment_json
-                        .get("primary_domain")
-                        .and_then(|d| d.as_str())
-                        .map(|s| s.to_string()),
-                    confidence: segment_json
-                        .get("confidence")
-                        .and_then(|c| c.as_f64())
-                        .unwrap_or(0.0) as f32,
-                    evidence: segment_json
-                        .get("evidence")
-                        .and_then(|e| e.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str())
-                                .map(|s| s.to_string())
-                                .collect()
-                        })
-                        .unwrap_or_default(),
-                    secondary_domains: segment_json
-                        .get("secondary_domains")
-                        .and_then(|e| e.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str())
-                                .map(|s| s.to_string())
-                                .collect()
-                        })
-                        .unwrap_or_default(),
-                    quality_score: segment_json
-                        .get("quality_score")
-                        .and_then(|q| q.as_f64())
-                        .map(|q| q as f32),
-                    patterns: Vec::new(),
-                };
-
-                analyses.push(analysis);
             }
         }
 
+        Ok(analyses)
+    }
+    
+    fn parse_domain_requirements(
+        &self,
+        domains: &serde_json::Value,
+        requirement_type: &str
+    ) -> Result<Vec<SegmentAnalysis>> {
+        let mut analyses = Vec::new();
+        
+        if let Some(domains_obj) = domains.as_object() {
+            for (domain_name, domain_data) in domains_obj {
+                let empty_vec = vec![];
+                let segment_ids = domain_data
+                    .get("segment_ids")
+                    .and_then(|s| s.as_array())
+                    .unwrap_or(&empty_vec);
+                
+                let confidence = domain_data
+                    .get("confidence")
+                    .and_then(|c| c.as_f64())
+                    .unwrap_or(0.0) as f32;
+                
+                let evidence: Vec<String> = domain_data
+                    .get("evidence")
+                    .and_then(|e| e.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                
+                // Create analysis entries for each segment ID
+                for segment_id in segment_ids {
+                    if let Some(seg_id_str) = segment_id.as_str() {
+                        analyses.push(SegmentAnalysis {
+                            segment_id: seg_id_str.to_string(),
+                            primary_domain: Some(format!("{} ({})", domain_name, requirement_type)),
+                            confidence,
+                            evidence: evidence.clone(),
+                            secondary_domains: vec![requirement_type.to_string()],
+                            quality_score: None,
+                            patterns: Vec::new(),
+                        });
+                    }
+                }
+            }
+        }
+        
         Ok(analyses)
     }
 
@@ -401,7 +488,7 @@ impl LocalLLMManager {
                 if end > start {
                     let json_candidate = &text[start..=end];
                     // Validate that this looks like proper JSON
-                    if json_candidate.contains("\"segments\"") {
+                    if json_candidate.contains("\"project_analysis\"") || json_candidate.contains("\"segments\"") {
                         return Some(json_candidate.to_string());
                     }
                 }
@@ -506,44 +593,55 @@ impl PromptTemplateEngine {
         templates.insert(
             AnalysisType::BusinessDomain,
             PromptTemplate {
-                system_prompt: r#"You are a senior software architect analyzing code to identify business domains.
+                system_prompt: r#"You are a senior software architect and business analyst analyzing a codebase to understand its business objectives and functional architecture.
 
-Common business domains include:
-- Authentication (login, signup, password reset, OAuth, JWT, sessions)
-- User Management (profiles, permissions, roles, accounts)
-- Notification (emails, SMS, push notifications, alerts, messaging)
-- Payment (billing, subscriptions, transactions, invoices, charges)
-- E-commerce (products, cart, orders, inventory, catalog)
-- Content Management (CRUD operations, media, documents)
-- Analytics (tracking, reporting, metrics, dashboards)
-- Communication (chat, messaging, comments, social features)
+Your task is to:
+1. Identify the PRIMARY BUSINESS DOMAIN/OBJECTIVE of the entire project (what is the main business purpose this project serves?)
+2. Classify code segments into FUNCTIONAL REQUIREMENTS (core business logic) vs NON-FUNCTIONAL REQUIREMENTS (supporting infrastructure)
+3. Determine domain classifications organically based on the actual code - do not limit yourself to predefined categories
 
-Analyze each code segment and classify its primary business domain based on function names, variable names, class names, and overall purpose.
+Functional Requirements: Core business logic that directly serves the primary business objective
+Non-Functional Requirements: Supporting infrastructure like logging, monitoring, documentation, caching, security layers, etc.
 
 IMPORTANT: You must respond with ONLY valid JSON. No explanatory text, no markdown formatting, no code blocks. Just pure JSON."#.to_string(),
-                user_prompt_template: r#"Analyze these code segments and identify the business domain for each:
+                user_prompt_template: r#"Analyze these code segments to understand the business architecture:
 
 {segments}
 
-IMPORTANT: Respond ONLY with valid JSON. No explanatory text before or after.
+Based on the code segments, provide a comprehensive business analysis:
 
-For each segment, provide:
-1. Primary business domain (or "Infrastructure" if no clear business domain)
-2. Confidence score (0.0-1.0)
-3. Key evidence from the code (variable names, function names, etc.)
-4. Secondary domains if applicable
+1. Determine the PRIMARY BUSINESS DOMAIN/OBJECTIVE of this project
+2. Classify each segment as either Functional or Non-Functional requirement
+3. Identify specific domain categories organically from the code
 
 Respond with this exact JSON structure:
 {
-  "segments": [
-    {
-      "segment_id": "segment_0",
-      "primary_domain": "Authentication",
-      "confidence": 0.9,
-      "evidence": ["password_hash", "login_endpoint", "auth_required"],
-      "secondary_domains": ["User Management"]
+  "project_analysis": {
+    "primary_business_domain": "Brief description of main business objective",
+    "project_type": "e.g., Gateway Service, Authentication Service, E-commerce Platform, etc."
+  },
+  "functional_requirements": {
+    "description": "Core business functionalities",
+    "domains": {
+      "Domain Name 1": {
+        "description": "What this domain does",
+        "segment_ids": ["segment_0", "segment_3"],
+        "confidence": 0.9,
+        "evidence": ["key code patterns", "function names"]
+      }
     }
-  ]
+  },
+  "non_functional_requirements": {
+    "description": "Supporting infrastructure and cross-cutting concerns",
+    "domains": {
+      "Domain Name 2": {
+        "description": "What this domain does", 
+        "segment_ids": ["segment_1", "segment_2"],
+        "confidence": 0.8,
+        "evidence": ["logging patterns", "config management"]
+      }
+    }
+  }
 }"#.to_string(),
             },
         );

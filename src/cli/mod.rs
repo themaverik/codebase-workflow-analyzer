@@ -485,8 +485,29 @@ impl CliRunner {
             println!("      - Available: {}", llm_analysis.llm_available);
             println!("      - Processing Time: {}ms", llm_analysis.processing_time_ms);
             println!("      - Segments Analyzed: {}", llm_analysis.business_domain_analysis.segments.len());
-            println!("      - Domain Distribution: {:?}", 
-                llm_analysis.business_domain_analysis.summary.domain_distribution.keys().collect::<Vec<_>>());
+            
+            // Display new business analysis if available
+            if let Some(project_analysis) = &llm_analysis.business_domain_analysis.project_analysis {
+                println!("\n    📋 Business Analysis:");
+                println!("      Primary Domain: {}", project_analysis.primary_business_domain);
+                println!("      Project Type: {}", project_analysis.project_type);
+                
+                println!("\n      🎯 Functional Requirements:");
+                println!("        {}", project_analysis.functional_requirements.description);
+                for (domain, analysis) in &project_analysis.functional_requirements.domains {
+                    println!("        - {} ({}% confidence): {}", domain, (analysis.confidence * 100.0) as u32, analysis.description);
+                }
+                
+                println!("\n      🔧 Non-Functional Requirements:");
+                println!("        {}", project_analysis.non_functional_requirements.description);
+                for (domain, analysis) in &project_analysis.non_functional_requirements.domains {
+                    println!("        - {} ({}% confidence): {}", domain, (analysis.confidence * 100.0) as u32, analysis.description);
+                }
+            } else {
+                // Fallback to old format
+                println!("      - Domain Distribution: {:?}", 
+                    llm_analysis.business_domain_analysis.summary.domain_distribution.keys().collect::<Vec<_>>());
+            }
         }
         
         // Show framework analysis
