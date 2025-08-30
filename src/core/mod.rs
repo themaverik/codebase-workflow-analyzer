@@ -8,6 +8,11 @@ pub mod ast_analyzer;
 pub mod extractors;
 pub mod types;
 pub mod ast_integration_test;
+pub mod config;
+pub mod project_analyzer;
+pub mod project_classifier;
+pub mod danet_detector;
+pub mod self_analysis_test;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodebaseAnalysis {

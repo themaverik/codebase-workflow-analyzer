@@ -1,0 +1,324 @@
+{
+  "business_domains": [
+    {
+      "id": "authentication",
+      "name": "Authentication",
+      "description": "Login, signup, password management, OAuth integration",
+      "keywords": ["auth", "login", "signup", "password", "oauth", "jwt", "token", "session"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/auth", "/login", "/signup", "/logout", "/oauth"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "file_pattern",
+          "patterns": ["auth", "login", "signup", "oauth", "jwt"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "class_method_pattern",
+          "patterns": ["authenticate", "login", "logout", "verifyToken"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "user_management",
+      "name": "User Management",
+      "description": "User profiles, permissions, roles, account settings",
+      "keywords": ["user", "profile", "account", "role", "permission", "settings"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/users", "/profile", "/account", "/settings"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "database_pattern",
+          "patterns": ["User", "Profile", "Account", "Role", "Permission"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "component_pattern",
+          "patterns": ["UserProfile", "AccountSettings", "RoleManager"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "payment_processing",
+      "name": "Payment Processing",
+      "description": "Billing, subscriptions, transactions, invoicing",
+      "keywords": ["payment", "billing", "subscription", "invoice", "transaction", "stripe", "paypal"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/payment", "/billing", "/subscription", "/checkout"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "service_integration",
+          "patterns": ["stripe", "paypal", "square", "braintree"],
+          "confidence_weight": 0.85
+        },
+        {
+          "type": "database_pattern",
+          "patterns": ["Payment", "Invoice", "Subscription", "Transaction"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "ecommerce",
+      "name": "E-commerce",
+      "description": "Product catalogs, shopping carts, order processing",
+      "keywords": ["product", "cart", "order", "catalog", "inventory", "shop"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/products", "/cart", "/orders", "/checkout", "/shop"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "database_pattern",
+          "patterns": ["Product", "Cart", "Order", "Inventory"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "component_pattern",
+          "patterns": ["ProductList", "ShoppingCart", "OrderSummary"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "content_management",
+      "name": "Content Management",
+      "description": "CRUD operations, media handling, publishing workflows",
+      "keywords": ["content", "cms", "post", "article", "media", "publish", "editor"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/content", "/posts", "/articles", "/media", "/admin"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "database_pattern",
+          "patterns": ["Post", "Article", "Content", "Media", "Category"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "crud_pattern",
+          "patterns": ["create", "read", "update", "delete", "publish"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics",
+      "description": "Event tracking, reporting, metrics collection, dashboards",
+      "keywords": ["analytics", "tracking", "metrics", "dashboard", "report", "stats"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/analytics", "/dashboard", "/metrics", "/reports"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "service_integration",
+          "patterns": ["google-analytics", "segment", "mixpanel", "amplitude"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "method_pattern",
+          "patterns": ["track", "measure", "analyze", "report"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "notification_system",
+      "name": "Notification System",
+      "description": "Email, SMS, push notifications, alert management",
+      "keywords": ["notification", "email", "sms", "push", "alert", "message"],
+      "patterns": [
+        {
+          "type": "service_integration",
+          "patterns": ["sendgrid", "mailgun", "twilio", "firebase-messaging"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "database_pattern",
+          "patterns": ["Notification", "Message", "Alert", "EmailTemplate"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "method_pattern",
+          "patterns": ["sendEmail", "sendSMS", "pushNotification"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "communication",
+      "name": "Communication",
+      "description": "Chat systems, messaging, comments, social features",
+      "keywords": ["chat", "message", "comment", "social", "forum", "discussion"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/chat", "/messages", "/comments", "/forum"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "websocket_pattern",
+          "patterns": ["websocket", "socket.io", "realtime", "chat"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "database_pattern",
+          "patterns": ["Message", "Chat", "Comment", "Conversation"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "api_gateway",
+      "name": "API Gateway",
+      "description": "API routing, rate limiting, authentication middleware",
+      "keywords": ["gateway", "proxy", "routing", "middleware", "rate-limiting"],
+      "patterns": [
+        {
+          "type": "infrastructure_pattern",
+          "patterns": ["gateway", "proxy", "router", "middleware"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "rate_limiting_pattern",
+          "patterns": ["rate-limit", "throttle", "quota"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "file_management",
+      "name": "File Management",
+      "description": "File upload, storage, processing, CDN integration",
+      "keywords": ["file", "upload", "storage", "cdn", "asset", "media"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/upload", "/files", "/assets", "/media"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "service_integration",
+          "patterns": ["aws-s3", "cloudinary", "azure-storage"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "method_pattern",
+          "patterns": ["upload", "download", "store", "process"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "data_processing",
+      "name": "Data Processing",
+      "description": "ETL operations, data transformation, batch processing",
+      "keywords": ["etl", "transform", "process", "batch", "pipeline", "data"],
+      "patterns": [
+        {
+          "type": "pipeline_pattern",
+          "patterns": ["pipeline", "etl", "transform", "batch"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "data_framework",
+          "patterns": ["pandas", "spark", "kafka", "airflow"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "search_functionality",
+      "name": "Search Functionality",
+      "description": "Full-text search, filtering, indexing",
+      "keywords": ["search", "filter", "index", "query", "elasticsearch", "solr"],
+      "patterns": [
+        {
+          "type": "route_pattern",
+          "patterns": ["/search", "/filter"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "search_engine",
+          "patterns": ["elasticsearch", "solr", "algolia"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "workflow_automation",
+      "name": "Workflow Automation",
+      "description": "Business process automation, workflow management",
+      "keywords": ["workflow", "automation", "process", "task", "job", "scheduler"],
+      "patterns": [
+        {
+          "type": "workflow_pattern",
+          "patterns": ["workflow", "process", "task", "job"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "scheduler_pattern",
+          "patterns": ["cron", "scheduler", "queue", "worker"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "monitoring_observability",
+      "name": "Monitoring & Observability",
+      "description": "Application monitoring, logging, performance tracking",
+      "keywords": ["monitoring", "logging", "metrics", "tracing", "observability"],
+      "patterns": [
+        {
+          "type": "monitoring_tool",
+          "patterns": ["prometheus", "grafana", "datadog", "newrelic"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "logging_pattern",
+          "patterns": ["logger", "log", "trace", "metric"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "codebase_intelligence",
+      "name": "Codebase Intelligence",
+      "description": "Code analysis, static analysis, developer tools",
+      "keywords": ["analyze", "lint", "format", "parse", "ast", "code-intelligence"],
+      "patterns": [
+        {
+          "type": "analysis_pattern",
+          "patterns": ["analyze", "parse", "lint", "format", "detect"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "ast_pattern",
+          "patterns": ["ast", "tree-sitter", "parser", "syntax"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "tool_pattern",
+          "patterns": ["analyzer", "linter", "formatter", "checker"],
+          "confidence_weight": 0.8
+        }
+      ]
+    }
+  ]
+}

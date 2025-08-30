@@ -1,0 +1,411 @@
+{
+  "project_types": [
+    {
+      "id": "analysis_tool",
+      "name": "Analysis Tool",
+      "description": "Codebase analyzers, linters, formatters, code intelligence tools",
+      "indicators": [
+        {
+          "type": "cargo_binary_name",
+          "patterns": ["analyzer", "linter", "formatter", "checker", "parser"]
+        },
+        {
+          "type": "dependency_pattern",
+          "patterns": ["tree-sitter", "syn", "swc", "eslint", "ast"]
+        },
+        {
+          "type": "cli_structure",
+          "patterns": ["clap", "structopt", "main.rs"]
+        },
+        {
+          "type": "readme_keywords",
+          "patterns": ["analyze", "lint", "format", "parse", "static analysis", "code intelligence"]
+        }
+      ],
+      "analysis_focus": "tool capabilities and analysis features",
+      "domain_hints": ["Code Analysis", "Developer Tools", "Static Analysis"]
+    },
+    {
+      "id": "web_application",
+      "name": "Web Application",
+      "description": "Frontend/backend web apps, SPAs, progressive web apps",
+      "indicators": [
+        {
+          "type": "package_dependencies",
+          "patterns": ["react", "vue", "angular", "next", "nuxt", "express", "koa"]
+        },
+        {
+          "type": "file_structure",
+          "patterns": ["src/components", "pages", "public", "static", "templates"]
+        },
+        {
+          "type": "config_files",
+          "patterns": ["webpack.config.js", "vite.config.js", "next.config.js"]
+        }
+      ],
+      "analysis_focus": "user-facing features and business logic",
+      "domain_hints": ["User Interface", "Business Logic", "Web Services"]
+    },
+    {
+      "id": "api_service",
+      "name": "API Service",
+      "description": "REST/GraphQL API backends, microservices",
+      "indicators": [
+        {
+          "type": "framework_patterns",
+          "patterns": ["fastapi", "flask", "django", "spring-boot", "nestjs", "axum", "actix"]
+        },
+        {
+          "type": "route_patterns",
+          "patterns": ["/api/", "router", "controller", "endpoint"]
+        },
+        {
+          "type": "database_patterns",
+          "patterns": ["orm", "database", "migrations", "models"]
+        }
+      ],
+      "analysis_focus": "API endpoints and data processing",
+      "domain_hints": ["API Design", "Data Processing", "Backend Services"]
+    },
+    {
+      "id": "cli_tool",
+      "name": "CLI Tool",
+      "description": "Command-line utilities, terminal applications",
+      "indicators": [
+        {
+          "type": "cli_dependencies",
+          "patterns": ["clap", "structopt", "click", "argparse", "commander"]
+        },
+        {
+          "type": "binary_config",
+          "patterns": ["[[bin]]", "console_scripts", "scripts"]
+        }
+      ],
+      "analysis_focus": "command-line interface and automation capabilities",
+      "domain_hints": ["Automation", "Command Line", "System Tools"]
+    },
+    {
+      "id": "library",
+      "name": "Library",
+      "description": "Reusable code libraries, SDKs, frameworks",
+      "indicators": [
+        {
+          "type": "library_structure",
+          "patterns": ["lib.rs", "__init__.py", "index.ts", "src/lib"]
+        },
+        {
+          "type": "package_type",
+          "patterns": ["library", "package", "crate-type = \"lib\""]
+        }
+      ],
+      "analysis_focus": "provided abstractions and APIs",
+      "domain_hints": ["Code Reusability", "API Design", "Software Architecture"]
+    },
+    {
+      "id": "desktop_application",
+      "name": "Desktop Application",
+      "description": "Desktop applications (Electron, native GUI apps)",
+      "indicators": [
+        {
+          "type": "desktop_frameworks",
+          "patterns": ["electron", "tauri", "gtk", "qt", "winforms", "wpf"]
+        },
+        {
+          "type": "gui_patterns",
+          "patterns": ["window", "dialog", "menu", "gui"]
+        }
+      ],
+      "analysis_focus": "GUI components and desktop-specific features",
+      "domain_hints": ["User Interface", "Desktop Experience", "Native Apps"]
+    },
+    {
+      "id": "mobile_application",
+      "name": "Mobile Application",
+      "description": "Mobile applications (React Native, Flutter, native)",
+      "indicators": [
+        {
+          "type": "mobile_frameworks",
+          "patterns": ["react-native", "flutter", "ionic", "cordova", "xamarin"]
+        },
+        {
+          "type": "mobile_configs",
+          "patterns": ["android", "ios", "mobile", "app.json"]
+        }
+      ],
+      "analysis_focus": "mobile-specific patterns and user interactions",
+      "domain_hints": ["Mobile Experience", "User Interface", "Cross-Platform"]
+    },
+    {
+      "id": "data_pipeline",
+      "name": "Data Pipeline",
+      "description": "ETL tools, data processing frameworks",
+      "indicators": [
+        {
+          "type": "data_frameworks",
+          "patterns": ["pandas", "numpy", "spark", "airflow", "kafka", "etl"]
+        },
+        {
+          "type": "data_patterns",
+          "patterns": ["pipeline", "transform", "extract", "load", "batch"]
+        }
+      ],
+      "analysis_focus": "data processing, ETL operations, and data flow",
+      "domain_hints": ["Data Processing", "ETL", "Analytics"]
+    },
+    {
+      "id": "machine_learning",
+      "name": "Machine Learning",
+      "description": "ML/AI model training, inference systems",
+      "indicators": [
+        {
+          "type": "ml_frameworks",
+          "patterns": ["tensorflow", "pytorch", "scikit-learn", "keras", "huggingface"]
+        },
+        {
+          "type": "ml_patterns",
+          "patterns": ["model", "training", "inference", "dataset", "neural"]
+        }
+      ],
+      "analysis_focus": "model training, inference, and AI capabilities",
+      "domain_hints": ["Artificial Intelligence", "Machine Learning", "Data Science"]
+    },
+    {
+      "id": "devops_tool",
+      "name": "DevOps Tool",
+      "description": "CI/CD tools, deployment automation, infrastructure",
+      "indicators": [
+        {
+          "type": "devops_patterns",
+          "patterns": ["docker", "kubernetes", "terraform", "ansible", "jenkins"]
+        },
+        {
+          "type": "infrastructure_files",
+          "patterns": [".github/workflows", "Dockerfile", "docker-compose", "k8s"]
+        }
+      ],
+      "analysis_focus": "deployment, infrastructure, and automation workflows",
+      "domain_hints": ["Infrastructure", "Automation", "Deployment"]
+    },
+    {
+      "id": "security_tool",
+      "name": "Security Tool",
+      "description": "Security analysis, vulnerability scanners, protection tools",
+      "indicators": [
+        {
+          "type": "security_patterns",
+          "patterns": ["security", "vulnerability", "scan", "audit", "crypto"]
+        },
+        {
+          "type": "security_frameworks",
+          "patterns": ["owasp", "security-audit", "pen-test", "encryption"]
+        }
+      ],
+      "analysis_focus": "security analysis, vulnerability detection, and protection",
+      "domain_hints": ["Security", "Vulnerability Analysis", "Cybersecurity"]
+    },
+    {
+      "id": "testing_framework",
+      "name": "Testing Framework",
+      "description": "Testing libraries, test automation, QA tools",
+      "indicators": [
+        {
+          "type": "testing_frameworks",
+          "patterns": ["jest", "pytest", "junit", "mocha", "cypress", "selenium"]
+        },
+        {
+          "type": "testing_patterns",
+          "patterns": ["test", "spec", "e2e", "integration", "unit"]
+        }
+      ],
+      "analysis_focus": "test automation, validation, and quality assurance",
+      "domain_hints": ["Quality Assurance", "Test Automation", "Software Testing"]
+    },
+    {
+      "id": "game_engine",
+      "name": "Game Engine",
+      "description": "Game development frameworks and engines",
+      "indicators": [
+        {
+          "type": "game_frameworks",
+          "patterns": ["unity", "unreal", "godot", "bevy", "amethyst", "pygame"]
+        },
+        {
+          "type": "game_patterns",
+          "patterns": ["game", "engine", "graphics", "physics", "rendering"]
+        }
+      ],
+      "analysis_focus": "game mechanics, rendering, and interactive features",
+      "domain_hints": ["Game Development", "Graphics", "Interactive Entertainment"]
+    },
+    {
+      "id": "monitoring_system",
+      "name": "Monitoring System",
+      "description": "Logging, metrics, observability platforms",
+      "indicators": [
+        {
+          "type": "monitoring_frameworks",
+          "patterns": ["prometheus", "grafana", "elasticsearch", "kibana", "datadog"]
+        },
+        {
+          "type": "monitoring_patterns",
+          "patterns": ["metrics", "logging", "tracing", "observability", "alerts"]
+        }
+      ],
+      "analysis_focus": "observability, metrics collection, and alerting",
+      "domain_hints": ["Observability", "System Monitoring", "Performance Tracking"]
+    },
+    {
+      "id": "blockchain_app",
+      "name": "Blockchain Application",
+      "description": "Smart contracts, DeFi, blockchain applications",
+      "indicators": [
+        {
+          "type": "blockchain_frameworks",
+          "patterns": ["web3", "ethereum", "solidity", "truffle", "hardhat", "anchor"]
+        },
+        {
+          "type": "blockchain_patterns",
+          "patterns": ["smart-contract", "defi", "nft", "token", "blockchain"]
+        }
+      ],
+      "analysis_focus": "smart contracts, decentralized features, and crypto operations",
+      "domain_hints": ["Blockchain", "Decentralized Finance", "Smart Contracts"]
+    },
+    {
+      "id": "media_processor",
+      "name": "Media Processor",
+      "description": "Image/video processing, content management",
+      "indicators": [
+        {
+          "type": "media_frameworks",
+          "patterns": ["ffmpeg", "opencv", "pillow", "imagemagick", "gstreamer"]
+        },
+        {
+          "type": "media_patterns",
+          "patterns": ["image", "video", "audio", "media", "processing"]
+        }
+      ],
+      "analysis_focus": "content processing, transformation, and media handling",
+      "domain_hints": ["Media Processing", "Content Management", "Digital Assets"]
+    },
+    {
+      "id": "database_system",
+      "name": "Database System",
+      "description": "Database engines, ORM tools, data storage",
+      "indicators": [
+        {
+          "type": "database_frameworks",
+          "patterns": ["postgresql", "mysql", "mongodb", "redis", "sqlite", "orm"]
+        },
+        {
+          "type": "database_patterns",
+          "patterns": ["database", "storage", "query", "schema", "migration"]
+        }
+      ],
+      "analysis_focus": "data storage, querying, and database operations",
+      "domain_hints": ["Data Storage", "Database Design", "Data Management"]
+    },
+    {
+      "id": "documentation_site",
+      "name": "Documentation Site",
+      "description": "Static site generators, documentation platforms",
+      "indicators": [
+        {
+          "type": "docs_frameworks",
+          "patterns": ["gatsby", "hugo", "jekyll", "sphinx", "gitbook", "docusaurus"]
+        },
+        {
+          "type": "docs_patterns",
+          "patterns": ["docs", "documentation", "static-site", "markdown", "blog"]
+        }
+      ],
+      "analysis_focus": "content organization and documentation structure",
+      "domain_hints": ["Documentation", "Content Management", "Knowledge Base"]
+    },
+    {
+      "id": "scientific_computing",
+      "name": "Scientific Computing",
+      "description": "Research tools, simulation, mathematical computing",
+      "indicators": [
+        {
+          "type": "scientific_frameworks",
+          "patterns": ["numpy", "scipy", "matlab", "r", "julia", "mathematica"]
+        },
+        {
+          "type": "scientific_patterns",
+          "patterns": ["research", "simulation", "computation", "mathematical", "algorithm"]
+        }
+      ],
+      "analysis_focus": "computational algorithms and scientific methods",
+      "domain_hints": ["Scientific Research", "Mathematical Computing", "Simulation"]
+    },
+    {
+      "id": "networking_tool",
+      "name": "Networking Tool",
+      "description": "Network utilities, protocol implementations",
+      "indicators": [
+        {
+          "type": "networking_frameworks",
+          "patterns": ["socket", "http", "tcp", "udp", "grpc", "websocket"]
+        },
+        {
+          "type": "networking_patterns",
+          "patterns": ["network", "protocol", "server", "client", "connection"]
+        }
+      ],
+      "analysis_focus": "network protocols and communication patterns",
+      "domain_hints": ["Network Programming", "Protocol Implementation", "Communications"]
+    },
+    {
+      "id": "configuration_tool",
+      "name": "Configuration Tool",
+      "description": "Configuration management, environment setup",
+      "indicators": [
+        {
+          "type": "config_frameworks",
+          "patterns": ["ansible", "puppet", "chef", "terraform", "helm"]
+        },
+        {
+          "type": "config_patterns",
+          "patterns": ["config", "configuration", "environment", "setup", "provisioning"]
+        }
+      ],
+      "analysis_focus": "configuration management and environment setup",
+      "domain_hints": ["Configuration Management", "Environment Setup", "System Administration"]
+    },
+    {
+      "id": "chatbot",
+      "name": "Chatbot",
+      "description": "Conversational AI, automated support systems",
+      "indicators": [
+        {
+          "type": "chatbot_frameworks",
+          "patterns": ["dialogflow", "botframework", "rasa", "chatbot", "nlp"]
+        },
+        {
+          "type": "chatbot_patterns",
+          "patterns": ["chat", "bot", "conversation", "nlp", "intent"]
+        }
+      ],
+      "analysis_focus": "conversational logic and natural language processing",
+      "domain_hints": ["Conversational AI", "Natural Language Processing", "Customer Support"]
+    },
+    {
+      "id": "embedded_system",
+      "name": "Embedded System",
+      "description": "IoT, firmware, embedded device software",
+      "indicators": [
+        {
+          "type": "embedded_frameworks",
+          "patterns": ["arduino", "raspberry-pi", "embedded", "firmware", "iot"]
+        },
+        {
+          "type": "embedded_patterns",
+          "patterns": ["embedded", "firmware", "microcontroller", "sensor", "hardware"]
+        }
+      ],
+      "analysis_focus": "hardware interaction and embedded system logic",
+      "domain_hints": ["Embedded Systems", "IoT", "Hardware Programming"]
+    }
+  ]
+}

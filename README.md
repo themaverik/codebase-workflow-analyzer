@@ -1,6 +1,6 @@
 # Codebase Workflow Analyzer
 
-An intelligent reverse engineering tool that transforms existing codebases into systematic development workflows, generating PRDs, user stories, and technical documentation with AI-powered business domain inference.
+Advanced reverse engineering tool that transforms existing codebases into systematic development workflows, generating PRDs, user stories, and task breakdowns with AI-powered business domain inference and intelligent status detection.
 
 ## Overview
 
@@ -142,18 +142,41 @@ output:
 - **Flask**: Route decorators, Blueprint patterns
 - **FastAPI**: Async endpoints, Pydantic models, OpenAPI integration
 
-## Business Domain Classification
+## Project Type Classification
 
-The analyzer can identify these common business domains:
+The analyzer can identify and analyze various project types:
 
-- **Authentication**: Login, signup, password management, OAuth
+**Development Tools & Infrastructure**
+- **Code Analysis Tools**: Analyzers, linters, formatters, code intelligence platforms
+- **CLI Tools**: Command-line utilities, terminal applications, automation scripts
+- **DevOps Tools**: CI/CD pipelines, deployment automation, infrastructure management
+- **Testing Frameworks**: Test automation, validation tools, QA platforms
+
+**Application Types**
+- **Web Applications**: Frontend/backend web apps, SPAs, progressive web apps
+- **API Services**: REST/GraphQL backends, microservices, serverless functions
+- **Desktop Applications**: Native GUI apps, Electron applications, cross-platform tools
+- **Mobile Applications**: React Native, Flutter, native iOS/Android apps
+
+**Specialized Systems**
+- **Data Pipelines**: ETL tools, data processing frameworks, analytics platforms
+- **Machine Learning**: ML/AI model training, inference systems, data science tools
+- **Security Tools**: Vulnerability scanners, penetration testing, security analysis
+- **Monitoring Systems**: Logging, metrics collection, observability platforms
+- **Media Processors**: Image/video processing, content management, transformation tools
+
+**Business Domain Classification**
+
+Within each project type, the analyzer identifies specific business domains:
+
+- **Authentication**: Login, signup, password management, OAuth integration
 - **User Management**: Profiles, permissions, roles, account settings
 - **Payment Processing**: Billing, subscriptions, transactions, invoicing
 - **E-commerce**: Product catalogs, shopping carts, order processing
-- **Content Management**: CRUD operations, media handling, publishing
-- **Notification Systems**: Email, SMS, push notifications, alerts
-- **Analytics**: Event tracking, reporting, metrics collection
-- **Communication**: Chat, messaging, comments, social features
+- **Content Management**: CRUD operations, media handling, publishing workflows
+- **Notification Systems**: Email, SMS, push notifications, alert management
+- **Analytics**: Event tracking, reporting, metrics collection, dashboards
+- **Communication**: Chat systems, messaging, comments, social features
 
 ## Output Examples
 

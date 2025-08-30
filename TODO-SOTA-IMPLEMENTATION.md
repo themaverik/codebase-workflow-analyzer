@@ -23,7 +23,7 @@ impl ProjectAnalyzer {
         // 1. Read package.json, Cargo.toml, README.md
         // 2. Identify main entry points (main.rs, index.ts, app.py)  
         // 3. Infer project purpose (CLI tool, web app, library, analyzer)
-        // 4. Extract domain hints from project description
+        // 4. Extract domain hints from project description, documentation including README and other documents (usually markdown files organised in docs folder)
     }
 }
 ```
@@ -44,10 +44,22 @@ CRITICAL CONTEXT: You are analyzing a {project_type} in the {domain} domain.
 PROJECT PURPOSE: {project_purpose}
 PROBLEM CONTEXT: {problem_context}
 
-IMPORTANT: This is a {project_classification}. 
+IMPORTANT: This is a {project_classification}. Apply context-specific analysis:
 - If analyzing a CODE ANALYSIS TOOL: Focus on the tool's capabilities, not analyzed content
 - If analyzing a WEB APPLICATION: Focus on user-facing features and business logic
 - If analyzing a LIBRARY/FRAMEWORK: Focus on provided abstractions and APIs
+- If analyzing a CLI TOOL: Focus on command-line interface and automation capabilities
+- If analyzing a DESKTOP APPLICATION: Focus on GUI components and desktop-specific features
+- If analyzing a MOBILE APPLICATION: Focus on mobile-specific patterns and user interactions
+- If analyzing a DATA PIPELINE: Focus on data processing, ETL operations, and data flow
+- If analyzing a MACHINE LEARNING project: Focus on model training, inference, and AI capabilities
+- If analyzing a DEVOPS TOOL: Focus on deployment, infrastructure, and automation workflows
+- If analyzing a SECURITY TOOL: Focus on security analysis, vulnerability detection, and protection
+- If analyzing a TESTING FRAMEWORK: Focus on test automation, validation, and quality assurance
+- If analyzing a GAME ENGINE: Focus on game mechanics, rendering, and interactive features
+- If analyzing a BLOCKCHAIN APP: Focus on smart contracts, decentralized features, and crypto operations
+- If analyzing a MONITORING SYSTEM: Focus on observability, metrics collection, and alerting
+- If analyzing a MEDIA PROCESSOR: Focus on content processing, transformation, and media handling
 
 Project Metadata:
 {project_metadata}
@@ -66,13 +78,29 @@ Classify business domains within this project context.
 // NEW: src/core/project_classifier.rs
 #[derive(Debug, Clone)]
 pub enum ProjectType {
-    AnalysisTool,     // Codebase analyzers, linters, formatters
-    WebApplication,   // Frontend/backend web apps
-    ApiService,       // REST/GraphQL API backends
-    Library,          // Reusable code libraries
-    CliTool,          // Command-line utilities
-    Desktop,          // Desktop applications
-    Mobile,           // Mobile applications
+    AnalysisTool,       // Codebase analyzers, linters, formatters, code intelligence tools
+    WebApplication,     // Frontend/backend web apps, SPAs, progressive web apps
+    ApiService,         // REST/GraphQL API backends, microservices
+    Library,            // Reusable code libraries, SDKs, frameworks
+    CliTool,            // Command-line utilities, terminal applications
+    Desktop,            // Desktop applications (Electron, native GUI apps)
+    Mobile,             // Mobile applications (React Native, Flutter, native iOS/Android)
+    GameEngine,         // Game development frameworks and engines
+    DataPipeline,       // ETL tools, data processing frameworks
+    MachineLearning,    // ML/AI model training, inference systems
+    DevOps,             // CI/CD tools, deployment automation, infrastructure
+    EmbeddedSystem,     // IoT, firmware, embedded device software
+    DatabaseSystem,     // Database engines, ORM tools, data storage
+    SecurityTool,       // Security analysis, penetration testing, vulnerability scanners
+    TestingFramework,   // Testing libraries, test automation, QA tools
+    DocumentationSite,  // Static site generators, documentation platforms
+    ConfigurationTool,  // Configuration management, environment setup
+    MonitoringSystem,   // Logging, metrics, observability platforms
+    BlockchainApp,      // Smart contracts, DeFi, blockchain applications
+    ChatBot,            // Conversational AI, automated support systems
+    MediaProcessor,     // Image/video processing, content management
+    ScientificComputing, // Research tools, simulation, mathematical computing
+    NetworkingTool,     // Network utilities, protocol implementations
 }
 
 pub struct ProjectClassifier;

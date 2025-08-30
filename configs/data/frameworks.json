@@ -1,0 +1,284 @@
+{
+  "frameworks": [
+    {
+      "id": "react",
+      "name": "React",
+      "language": "TypeScript",
+      "category": "frontend",
+      "ecosystem": "JavaScript",
+      "indicators": [
+        {
+          "type": "package_dependency",
+          "patterns": ["react", "react-dom"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "file_extension",
+          "patterns": [".jsx", ".tsx"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["import React", "from 'react'", "useState", "useEffect"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "nextjs",
+      "name": "Next.js",
+      "language": "TypeScript",
+      "category": "fullstack",
+      "ecosystem": "JavaScript",
+      "indicators": [
+        {
+          "type": "package_dependency",
+          "patterns": ["next"],
+          "confidence_weight": 0.95
+        },
+        {
+          "type": "file_structure",
+          "patterns": ["pages/", "app/", "next.config.js"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["next/", "next/router", "next/head"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "nestjs",
+      "name": "NestJS",
+      "language": "TypeScript",
+      "category": "backend",
+      "ecosystem": "JavaScript",
+      "indicators": [
+        {
+          "type": "package_dependency",
+          "patterns": ["@nestjs/core", "@nestjs/common"],
+          "confidence_weight": 0.95
+        },
+        {
+          "type": "decorator_pattern",
+          "patterns": ["@Controller", "@Injectable", "@Module"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "file_structure",
+          "patterns": ["src/modules/", ".module.ts", ".controller.ts", ".service.ts"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "danet",
+      "name": "Danet",
+      "language": "TypeScript",
+      "category": "backend",
+      "ecosystem": "Deno",
+      "indicators": [
+        {
+          "type": "deno_config",
+          "patterns": ["deno.json", "deno.jsonc"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "package_dependency",
+          "patterns": ["https://deno.land/x/danet", "danet"],
+          "confidence_weight": 0.95
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["from 'https://deno.land/x/danet'", "from \"danet\""],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "decorator_pattern",
+          "patterns": ["@Controller", "@Injectable", "@Module"],
+          "confidence_weight": 0.7
+        },
+        {
+          "type": "deno_specific",
+          "patterns": ["Deno.serve", "deno task", "deno run"],
+          "confidence_weight": 0.6
+        }
+      ],
+      "deno_specific": {
+        "native_typescript": true,
+        "builtin_tooling": ["deno fmt", "deno lint", "deno test"],
+        "import_system": "ES modules with URLs",
+        "package_manager": "deno.json imports"
+      }
+    },
+    {
+      "id": "express",
+      "name": "Express",
+      "language": "JavaScript",
+      "category": "backend",
+      "ecosystem": "JavaScript",
+      "indicators": [
+        {
+          "type": "package_dependency",
+          "patterns": ["express"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["require('express')", "from 'express'", "express()"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "route_pattern",
+          "patterns": ["app.get", "app.post", "app.use", "router."],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "django",
+      "name": "Django",
+      "language": "Python",
+      "category": "fullstack",
+      "ecosystem": "Python",
+      "indicators": [
+        {
+          "type": "package_dependency",
+          "patterns": ["Django"],
+          "confidence_weight": 0.95
+        },
+        {
+          "type": "file_structure",
+          "patterns": ["manage.py", "settings.py", "urls.py", "models.py"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["from django", "import django", "django."],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "flask",
+      "name": "Flask",
+      "language": "Python",
+      "category": "backend",
+      "ecosystem": "Python",
+      "indicators": [
+        {
+          "type": "package_dependency",
+          "patterns": ["Flask"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["from flask", "Flask(__name__)", "@app.route"],
+          "confidence_weight": 0.8
+        },
+        {
+          "type": "decorator_pattern",
+          "patterns": ["@app.route", "@app.before_request"],
+          "confidence_weight": 0.7
+        }
+      ]
+    },
+    {
+      "id": "fastapi",
+      "name": "FastAPI",
+      "language": "Python",
+      "category": "backend",
+      "ecosystem": "Python",
+      "indicators": [
+        {
+          "type": "package_dependency",
+          "patterns": ["fastapi"],
+          "confidence_weight": 0.95
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["from fastapi", "FastAPI()", "@app.get", "@app.post"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "async_pattern",
+          "patterns": ["async def", "await"],
+          "confidence_weight": 0.6
+        }
+      ]
+    },
+    {
+      "id": "spring_boot",
+      "name": "Spring Boot",
+      "language": "Java",
+      "category": "backend",
+      "ecosystem": "Java",
+      "indicators": [
+        {
+          "type": "package_dependency",
+          "patterns": ["spring-boot-starter"],
+          "confidence_weight": 0.95
+        },
+        {
+          "type": "annotation_pattern",
+          "patterns": ["@SpringBootApplication", "@Controller", "@RestController", "@Service"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "file_structure",
+          "patterns": ["application.properties", "application.yml", "pom.xml", "build.gradle"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "axum",
+      "name": "Axum",
+      "language": "Rust",
+      "category": "backend",
+      "ecosystem": "Rust",
+      "indicators": [
+        {
+          "type": "cargo_dependency",
+          "patterns": ["axum"],
+          "confidence_weight": 0.95
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["use axum::", "axum::Router", "axum::extract"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "method_pattern",
+          "patterns": ["Router::new", "route(", "with_state"],
+          "confidence_weight": 0.8
+        }
+      ]
+    },
+    {
+      "id": "actix_web",
+      "name": "Actix Web",
+      "language": "Rust",
+      "category": "backend",
+      "ecosystem": "Rust",
+      "indicators": [
+        {
+          "type": "cargo_dependency",
+          "patterns": ["actix-web"],
+          "confidence_weight": 0.95
+        },
+        {
+          "type": "import_pattern",
+          "patterns": ["use actix_web::", "actix_web::App", "HttpServer"],
+          "confidence_weight": 0.9
+        },
+        {
+          "type": "method_pattern",
+          "patterns": ["HttpServer::new", "App::new", "web::"],
+          "confidence_weight": 0.8
+        }
+      ]
+    }
+  ]
+}
