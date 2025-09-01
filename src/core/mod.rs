@@ -9,10 +9,23 @@ pub mod extractors;
 pub mod types;
 pub mod ast_integration_test;
 pub mod config;
+pub mod template_engine;
+pub mod business_purpose_extractor;
+pub mod business_context_config;
+pub mod llm_business_extractor;
 pub mod project_analyzer;
 pub mod project_classifier;
 pub mod danet_detector;
 pub mod self_analysis_test;
+pub mod context_types;
+pub mod context_traits;
+pub mod hierarchical_context_manager;
+pub mod context_aware_ast_analyzer;
+pub mod context_aware_framework_detector;
+pub mod business_context_grounding;
+pub mod hierarchical_result_fusion;
+pub mod cache_manager;
+pub mod performance_monitor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodebaseAnalysis {

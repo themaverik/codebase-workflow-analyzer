@@ -79,10 +79,90 @@ struct BusinessDomainsData {
     business_domains: Vec<BusinessDomainConfig>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CCPMTemplates {
+    pub claude_md: CCPMTemplate,
+    pub prd: CCPMTemplate,
+    pub user_stories: CCPMTemplate,
+    pub context: CCPMContextTemplates,
+    pub common: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CCPMTemplate {
+    pub header: String,
+    pub sections: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CCPMContextTemplates {
+    pub product: HashMap<String, String>,
+    pub tech: HashMap<String, String>,
+    pub structure: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserStoryTemplates {
+    pub domain_stories: HashMap<String, UserStoryTemplate>,
+    pub story_template: String,
+    pub user_personas: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserStoryTemplate {
+    pub actor: String,
+    pub want: String,
+    pub so_that: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FrameworkCommands {
+    pub framework_commands: HashMap<String, HashMap<String, String>>,
+    pub command_sections: HashMap<String, CommandSection>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandSection {
+    pub header: String,
+    #[serde(default)]
+    pub footer: Option<String>,
+    #[serde(default)]
+    pub template: Option<String>,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LLMPromptTemplates {
+    pub domain_analysis_prompts: HashMap<String, DomainPrompt>,
+    pub context_aware_prompts: HashMap<String, String>,
+    pub validation_prompts: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DomainPrompt {
+    pub system_prompt: String,
+    pub analysis_focus: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowTemplates {
+    pub agents: HashMap<String, HashMap<String, String>>,
+    pub commands: HashMap<String, String>,
+    pub workflow_readme: HashMap<String, String>,
+    pub implementation_epic: HashMap<String, String>,
+    pub task_template: HashMap<String, String>,
+}
+
 pub struct ConfigManager {
     project_types: HashMap<String, ProjectTypeConfig>,
     frameworks: HashMap<String, FrameworkConfig>,
     business_domains: HashMap<String, BusinessDomainConfig>,
+    ccpm_templates: CCPMTemplates,
+    user_story_templates: UserStoryTemplates,
+    framework_commands: FrameworkCommands,
+    llm_prompt_templates: LLMPromptTemplates,
+    workflow_templates: WorkflowTemplates,
+    document_templates: CCPMTemplates,
 }
 
 impl ConfigManager {
@@ -92,11 +172,23 @@ impl ConfigManager {
         let project_types = Self::load_project_types(config_path)?;
         let frameworks = Self::load_frameworks(config_path)?;
         let business_domains = Self::load_business_domains(config_path)?;
+        let ccpm_templates = Self::load_ccpm_templates(config_path)?;
+        let user_story_templates = Self::load_user_story_templates(config_path)?;
+        let framework_commands = Self::load_framework_commands(config_path)?;
+        let llm_prompt_templates = Self::load_llm_prompt_templates(config_path)?;
+        let workflow_templates = Self::load_workflow_templates(config_path)?;
+        let document_templates = Self::load_document_templates(config_path)?;
 
         Ok(ConfigManager {
             project_types,
             frameworks,
             business_domains,
+            ccpm_templates,
+            user_story_templates,
+            framework_commands,
+            llm_prompt_templates,
+            workflow_templates,
+            document_templates,
         })
     }
 
@@ -148,6 +240,60 @@ impl ConfigManager {
         Ok(map)
     }
 
+    fn load_ccpm_templates(config_path: &Path) -> Result<CCPMTemplates> {
+        let file_path = config_path.join("ccpm_templates.json");
+        let content = fs::read_to_string(&file_path)
+            .with_context(|| format!("Failed to read CCPM templates file: {:?}", file_path))?;
+        
+        serde_json::from_str(&content)
+            .with_context(|| "Failed to parse CCPM templates JSON")
+    }
+
+    fn load_user_story_templates(config_path: &Path) -> Result<UserStoryTemplates> {
+        let file_path = config_path.join("user_story_templates.json");
+        let content = fs::read_to_string(&file_path)
+            .with_context(|| format!("Failed to read user story templates file: {:?}", file_path))?;
+        
+        serde_json::from_str(&content)
+            .with_context(|| "Failed to parse user story templates JSON")
+    }
+
+    fn load_framework_commands(config_path: &Path) -> Result<FrameworkCommands> {
+        let file_path = config_path.join("framework_commands.json");
+        let content = fs::read_to_string(&file_path)
+            .with_context(|| format!("Failed to read framework commands file: {:?}", file_path))?;
+        
+        serde_json::from_str(&content)
+            .with_context(|| "Failed to parse framework commands JSON")
+    }
+
+    fn load_llm_prompt_templates(config_path: &Path) -> Result<LLMPromptTemplates> {
+        let file_path = config_path.join("llm_prompt_templates.json");
+        let content = fs::read_to_string(&file_path)
+            .with_context(|| format!("Failed to read LLM prompt templates file: {:?}", file_path))?;
+        
+        serde_json::from_str(&content)
+            .with_context(|| "Failed to parse LLM prompt templates JSON")
+    }
+
+    fn load_workflow_templates(config_path: &Path) -> Result<WorkflowTemplates> {
+        let file_path = config_path.join("workflow_templates.json");
+        let content = fs::read_to_string(&file_path)
+            .with_context(|| format!("Failed to read workflow templates file: {:?}", file_path))?;
+        
+        serde_json::from_str(&content)
+            .with_context(|| "Failed to parse workflow templates JSON")
+    }
+
+    fn load_document_templates(config_path: &Path) -> Result<CCPMTemplates> {
+        let file_path = config_path.join("document_templates.json");
+        let content = fs::read_to_string(&file_path)
+            .with_context(|| format!("Failed to read document templates file: {:?}", file_path))?;
+        
+        serde_json::from_str(&content)
+            .with_context(|| "Failed to parse document templates JSON")
+    }
+
     pub fn get_project_type(&self, id: &str) -> Option<&ProjectTypeConfig> {
         self.project_types.get(id)
     }
@@ -194,6 +340,30 @@ impl ConfigManager {
             })
             .collect()
     }
+
+    pub fn get_ccpm_templates(&self) -> &CCPMTemplates {
+        &self.ccpm_templates
+    }
+
+    pub fn get_user_story_templates(&self) -> &UserStoryTemplates {
+        &self.user_story_templates
+    }
+
+    pub fn get_framework_commands(&self) -> &FrameworkCommands {
+        &self.framework_commands
+    }
+
+    pub fn get_llm_prompt_templates(&self) -> &LLMPromptTemplates {
+        &self.llm_prompt_templates
+    }
+
+    pub fn get_workflow_templates(&self) -> &WorkflowTemplates {
+        &self.workflow_templates
+    }
+
+    pub fn get_document_templates(&self) -> &CCPMTemplates {
+        &self.document_templates
+    }
 }
 
 // Global singleton instance
@@ -203,6 +373,25 @@ static CONFIG_MANAGER: Lazy<ConfigManager> = Lazy::new(|| {
 
 pub fn get_config() -> &'static ConfigManager {
     &CONFIG_MANAGER
+}
+
+// Simple Config struct for compatibility
+#[derive(Debug, Clone)]
+pub struct Config;
+
+impl Config {
+    pub fn instance() -> Self {
+        Config
+    }
+    
+    pub fn get_context_management_config(&self) -> serde_json::Value {
+        let config_path = Path::new("configs/data/context_management.json");
+        if let Ok(content) = fs::read_to_string(config_path) {
+            serde_json::from_str(&content).unwrap_or_else(|_| serde_json::json!({}))
+        } else {
+            serde_json::json!({})
+        }
+    }
 }
 
 #[cfg(test)]

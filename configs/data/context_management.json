@@ -1,0 +1,95 @@
+{
+  "hierarchical_weights": {
+    "project_context": 0.4,
+    "file_context": 0.3,
+    "segment_context": 0.2,
+    "cross_reference_context": 0.1
+  },
+  "context_extraction_rules": {
+    "max_file_contexts": 500,
+    "max_segment_contexts": 2000,
+    "cross_reference_depth": 3,
+    "similarity_threshold": 0.75
+  },
+  "file_context_patterns": {
+    "configuration_files": [
+      "*.json",
+      "*.yaml", 
+      "*.yml",
+      "*.toml",
+      "*.ini",
+      "*.env"
+    ],
+    "documentation_files": [
+      "README.*",
+      "CHANGELOG.*",
+      "LICENSE.*",
+      "*.md",
+      "docs/**/*"
+    ],
+    "test_files": [
+      "*test*",
+      "*spec*",
+      "__tests__/**/*",
+      "tests/**/*",
+      "test/**/*"
+    ],
+    "entry_point_files": [
+      "main.*",
+      "index.*",
+      "app.*",
+      "server.*",
+      "cli.*"
+    ]
+  },
+  "segment_context_types": {
+    "function_definition": {
+      "importance": 0.8,
+      "context_window": 10
+    },
+    "class_definition": {
+      "importance": 0.9,
+      "context_window": 15
+    },
+    "interface_definition": {
+      "importance": 0.7,
+      "context_window": 8
+    },
+    "module_import": {
+      "importance": 0.6,
+      "context_window": 3
+    },
+    "configuration_block": {
+      "importance": 0.8,
+      "context_window": 5
+    },
+    "api_endpoint": {
+      "importance": 0.9,
+      "context_window": 12
+    }
+  },
+  "cross_reference_categories": {
+    "functional_dependencies": {
+      "weight": 0.4,
+      "max_hops": 2
+    },
+    "data_flow": {
+      "weight": 0.3,
+      "max_hops": 3
+    },
+    "architectural_relationships": {
+      "weight": 0.2,
+      "max_hops": 1
+    },
+    "naming_conventions": {
+      "weight": 0.1,
+      "max_hops": 1
+    }
+  },
+  "context_validation": {
+    "min_confidence_threshold": 0.3,
+    "max_context_age_seconds": 3600,
+    "require_project_context": true,
+    "validate_cross_references": true
+  }
+}

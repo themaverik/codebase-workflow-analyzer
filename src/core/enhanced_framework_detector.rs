@@ -110,11 +110,11 @@ impl EnhancedFrameworkDetector {
 
     /// Enhanced main entry point for framework detection with AST and LLM analysis
     pub async fn detect_frameworks_enhanced(&mut self) -> Result<EnhancedFrameworkDetectionResult> {
-        println!("🔍 Starting enhanced framework detection...");
+        // Starting enhanced framework detection
         
         // Step 1: Traditional framework detection
         let traditional_result = self.detect_frameworks_traditional()?;
-        println!("  ✅ Traditional analysis complete");
+        // Traditional analysis complete
         
         // Step 2: AST analysis if enabled
         let (ast_analysis, code_segments) = if let Some(ref mut analyzer) = self.ast_analyzer {
@@ -153,7 +153,7 @@ impl EnhancedFrameworkDetector {
             &llm_analysis
         );
 
-        println!("  ✅ Enhanced framework detection complete");
+        // Enhanced framework detection complete
 
         Ok(EnhancedFrameworkDetectionResult {
             primary_ecosystem: traditional_result.primary_ecosystem,
@@ -175,7 +175,7 @@ impl EnhancedFrameworkDetector {
             LanguageEcosystem::TypeScript => self.detect_ts_frameworks()?,
             LanguageEcosystem::Java => self.detect_java_frameworks()?,
             LanguageEcosystem::Mixed => self.detect_mixed_frameworks()?,
-            LanguageEcosystem::Rust => Vec::new(),
+            LanguageEcosystem::Rust => self.detect_rust_frameworks()?,
             LanguageEcosystem::Go => Vec::new(),
             LanguageEcosystem::Deno => Vec::new(),
         };
@@ -212,6 +212,11 @@ impl EnhancedFrameworkDetector {
         if *file_counts.get(".java").unwrap_or(&0) > 0 {
             let java_score = *file_counts.get(".java").unwrap_or(&0) * 10;
             scores.insert(LanguageEcosystem::Java, java_score);
+        }
+        
+        if *file_counts.get(".rs").unwrap_or(&0) > 0 {
+            let rust_score = *file_counts.get(".rs").unwrap_or(&0) * 10;
+            scores.insert(LanguageEcosystem::Rust, rust_score);
         }
 
         // Select the ecosystem with the highest score
@@ -588,6 +593,7 @@ impl EnhancedFrameworkDetector {
         frameworks.extend(self.detect_python_frameworks()?);
         frameworks.extend(self.detect_ts_frameworks()?);
         frameworks.extend(self.detect_java_frameworks()?);
+        frameworks.extend(self.detect_rust_frameworks()?);
         Ok(frameworks)
     }
 
@@ -620,6 +626,105 @@ impl EnhancedFrameworkDetector {
         self.file_contains_pattern("pom.xml", "spring-boot") ||
         self.file_contains_pattern("**/*.java", "@RestController") ||
         self.file_contains_pattern("**/*.java", "@SpringBootApplication")
+    }
+
+    fn detect_rust_frameworks(&self) -> Result<Vec<EnhancedDetectedFramework>> {
+        let mut frameworks = Vec::new();
+        
+        if self.has_axum_indicators() {
+            frameworks.push(EnhancedDetectedFramework {
+                framework: Framework::Axum,
+                version: None,
+                confidence: 0.95,
+                evidence: vec![
+                    DetectionEvidence {
+                        evidence_type: EvidenceType::ConfigFile,
+                        source: "Cargo.toml".to_string(),
+                        pattern: "axum".to_string(),
+                        confidence_weight: 0.4,
+                    },
+                    DetectionEvidence {
+                        evidence_type: EvidenceType::ImportPattern,
+                        source: "*.rs files".to_string(),
+                        pattern: "use axum::".to_string(),
+                        confidence_weight: 0.6,
+                    },
+                ],
+                usage_extent: UsageExtent::Core,
+                ecosystem: LanguageEcosystem::Rust,
+                ast_evidence: None,
+            });
+        }
+        
+        if self.has_actix_indicators() {
+            frameworks.push(EnhancedDetectedFramework {
+                framework: Framework::Actix,
+                version: None,
+                confidence: 0.95,
+                evidence: vec![
+                    DetectionEvidence {
+                        evidence_type: EvidenceType::ConfigFile,
+                        source: "Cargo.toml".to_string(),
+                        pattern: "actix-web".to_string(),
+                        confidence_weight: 0.4,
+                    },
+                    DetectionEvidence {
+                        evidence_type: EvidenceType::ImportPattern,
+                        source: "*.rs files".to_string(),
+                        pattern: "use actix_web::".to_string(),
+                        confidence_weight: 0.6,
+                    },
+                ],
+                usage_extent: UsageExtent::Core,
+                ecosystem: LanguageEcosystem::Rust,
+                ast_evidence: None,
+            });
+        }
+        
+        if self.has_warp_indicators() {
+            frameworks.push(EnhancedDetectedFramework {
+                framework: Framework::Warp,
+                version: None,
+                confidence: 0.95,
+                evidence: vec![
+                    DetectionEvidence {
+                        evidence_type: EvidenceType::ConfigFile,
+                        source: "Cargo.toml".to_string(),
+                        pattern: "warp".to_string(),
+                        confidence_weight: 0.4,
+                    },
+                    DetectionEvidence {
+                        evidence_type: EvidenceType::ImportPattern,
+                        source: "*.rs files".to_string(),
+                        pattern: "use warp::".to_string(),
+                        confidence_weight: 0.6,
+                    },
+                ],
+                usage_extent: UsageExtent::Core,
+                ecosystem: LanguageEcosystem::Rust,
+                ast_evidence: None,
+            });
+        }
+        
+        Ok(frameworks)
+    }
+
+    fn has_axum_indicators(&self) -> bool {
+        self.file_contains_pattern("Cargo.toml", "axum") ||
+        self.file_contains_pattern("**/*.rs", "use axum::") ||
+        self.file_contains_pattern("**/*.rs", "axum::")
+    }
+
+    fn has_actix_indicators(&self) -> bool {
+        self.file_contains_pattern("Cargo.toml", "actix-web") ||
+        self.file_contains_pattern("**/*.rs", "use actix_web::") ||
+        self.file_contains_pattern("**/*.rs", "actix_web::")
+    }
+
+    fn has_warp_indicators(&self) -> bool {
+        self.file_contains_pattern("Cargo.toml", "warp") ||
+        self.file_contains_pattern("**/*.rs", "use warp::") ||
+        self.file_contains_pattern("**/*.rs", "warp::")
     }
 
     fn file_contains_pattern(&self, pattern: &str, search: &str) -> bool {

@@ -4,7 +4,12 @@ use crate::core::{
 };
 
 pub mod llm_client;
+pub mod ollama_manager;
+pub mod llm_business_analyzer;
+
 pub use llm_client::*;
+pub use ollama_manager::*;
+pub use llm_business_analyzer::*;
 
 pub struct IntelligenceEngine {
     patterns: PatternDatabase,

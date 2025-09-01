@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Language {
@@ -154,4 +156,21 @@ impl std::fmt::Display for LanguageEcosystem {
             LanguageEcosystem::Mixed => write!(f, "Mixed"),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AstSegment {
+    pub file_path: PathBuf,
+    pub start_line: usize,
+    pub end_line: usize,
+    pub segment_type: String,
+    pub content: String,
+    pub language: String,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct BusinessDomain {
+    pub name: String,
+    pub confidence: f32,
 }

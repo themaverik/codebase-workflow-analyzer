@@ -1,0 +1,94 @@
+{
+  "domain_analysis_prompts": {
+    "E-commerce": {
+      "system_prompt": "You are analyzing an e-commerce application. Focus on commerce-related functionality.",
+      "analysis_focus": [
+        "Product catalog and inventory management",
+        "Shopping cart and checkout processes",
+        "Payment processing integration",
+        "Order management and fulfillment",
+        "Customer account and profile management"
+      ]
+    },
+    "User Management": {
+      "system_prompt": "You are analyzing user management and authentication systems.",
+      "analysis_focus": [
+        "User registration and authentication",
+        "Profile management and user data",
+        "Role-based access control",
+        "Session management",
+        "Password security and recovery"
+      ]
+    },
+    "Content Management": {
+      "system_prompt": "You are analyzing a content management system.",
+      "analysis_focus": [
+        "Content creation and editing workflows",
+        "Media management and storage",
+        "Publishing and versioning systems",
+        "Content organization and taxonomy",
+        "User permissions and content governance"
+      ]
+    },
+    "Data Analytics": {
+      "system_prompt": "You are analyzing analytics and data processing systems.",
+      "analysis_focus": [
+        "Data collection and ingestion",
+        "Processing and transformation pipelines",
+        "Analytics and reporting capabilities",
+        "Data visualization and dashboards",
+        "Performance metrics and monitoring"
+      ]
+    },
+    "API Services": {
+      "system_prompt": "You are analyzing API and integration systems.",
+      "analysis_focus": [
+        "RESTful API design and endpoints",
+        "Data serialization and validation",
+        "Authentication and authorization",
+        "Rate limiting and throttling",
+        "Integration patterns and webhooks"
+      ]
+    },
+    "Developer Tools": {
+      "system_prompt": "You are analyzing development and analysis tools.",
+      "analysis_focus": [
+        "Code analysis and static analysis capabilities",
+        "Development workflow automation",
+        "Testing and quality assurance features",
+        "Integration with development environments",
+        "Documentation and reporting generation"
+      ]
+    },
+    "Code Analysis": {
+      "system_prompt": "You are analyzing code analysis and intelligence systems.",
+      "analysis_focus": [
+        "Static code analysis capabilities",
+        "Pattern detection and recognition",
+        "Code quality metrics and scoring",
+        "Framework and technology detection",
+        "Business domain inference and classification"
+      ]
+    },
+    "default": {
+      "system_prompt": "You are analyzing a software system. Focus on understanding the core functionality and business domain.",
+      "analysis_focus": [
+        "Core business logic and functionality",
+        "System architecture and patterns",
+        "Data flow and processing",
+        "User interactions and interfaces",
+        "Integration points and dependencies"
+      ]
+    }
+  },
+  "context_aware_prompts": {
+    "project_analysis": "Analyze this {project_type} project operating in the {domain} domain. Focus on {analysis_focus}. Consider the project's purpose: {project_purpose}.",
+    "business_intelligence": "Extract business intelligence from this codebase. Identify the primary business domain, user personas, and core capabilities based on the code patterns and structure.",
+    "framework_validation": "Validate the detected framework {framework_name} with {confidence}% confidence. Analyze the code segments for framework-specific patterns and architectural decisions."
+  },
+  "validation_prompts": {
+    "domain_validation": "Validate that the identified business domain '{domain_name}' accurately represents the codebase functionality. Provide evidence from code analysis.",
+    "framework_validation": "Confirm the framework detection of '{framework_name}' by analyzing the codebase structure and dependencies.",
+    "confidence_assessment": "Assess the confidence level for the analysis results based on available evidence and pattern matching strength."
+  }
+}

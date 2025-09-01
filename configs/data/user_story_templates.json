@@ -1,0 +1,99 @@
+{
+  "domain_stories": {
+    "Audio Processing": {
+      "actor": "music producer",
+      "want": "to separate audio tracks into individual stems",
+      "so_that": "I can remix and edit individual instruments"
+    },
+    "MIDI Extraction": {
+      "actor": "musician",
+      "want": "to extract MIDI notation from audio recordings",
+      "so_that": "I can edit the musical notes and create new arrangements"
+    },
+    "Music Collaboration": {
+      "actor": "collaborative music platform",
+      "want": "to automatically break down user uploads into workable components",
+      "so_that": "users can collaborate on remixes and song development"
+    },
+    "Web Development": {
+      "actor": "user",
+      "want": "to interact with a web interface",
+      "so_that": "I can access the application's functionality"
+    },
+    "API Development": {
+      "actor": "developer",
+      "want": "to use RESTful APIs",
+      "so_that": "I can integrate with the system programmatically"
+    },
+    "Data Management": {
+      "actor": "system",
+      "want": "to manage data effectively",
+      "so_that": "information is stored and retrieved reliably"
+    },
+    "Authentication & Security": {
+      "actor": "user",
+      "want": "secure authentication",
+      "so_that": "my data and actions are protected"
+    },
+    "Developer Tools": {
+      "actor": "developer",
+      "want": "development and analysis tools",
+      "so_that": "I can build and maintain software effectively"
+    },
+    "Testing": {
+      "actor": "developer",
+      "want": "automated testing capabilities",
+      "so_that": "I can ensure code quality and reliability"
+    },
+    "Code Analysis": {
+      "actor": "developer",
+      "want": "comprehensive code analysis tools",
+      "so_that": "I can understand and improve code quality"
+    },
+    "Static Analysis": {
+      "actor": "developer",
+      "want": "static code analysis capabilities",
+      "so_that": "I can identify issues without running code"
+    },
+    "Business Logic": {
+      "actor": "system",
+      "want": "robust business logic processing",
+      "so_that": "business requirements are correctly implemented"
+    },
+    "User Interface": {
+      "actor": "user",
+      "want": "intuitive user interface",
+      "so_that": "I can easily navigate and use the application"
+    },
+    "Web Services": {
+      "actor": "client application",
+      "want": "reliable web service endpoints",
+      "so_that": "I can consume services programmatically"
+    },
+    "API endpoint handling": {
+      "actor": "client",
+      "want": "well-defined API endpoints",
+      "so_that": "I can access system functionality remotely"
+    },
+    "Data handling and modeling": {
+      "actor": "system",
+      "want": "effective data modeling and handling",
+      "so_that": "data integrity and performance are maintained"
+    },
+    "default": {
+      "actor": "user",
+      "want": "{domain_name} functionality",
+      "so_that": "I can achieve my goals"
+    }
+  },
+  "story_template": "**As a** {actor}\n**I want** {want}\n**So that** {so_that}",
+  "user_personas": {
+    "Web Development": "**End Users**: Individuals using the web interface\n",
+    "API Development": "**API Consumers**: Systems and applications using the API\n",
+    "Developer Tools": "**Developers**: Software engineers using the development tools\n",
+    "Testing": "**QA Engineers**: Quality assurance professionals ensuring system reliability\n",
+    "Code Analysis": "**Software Architects**: Technical leaders analyzing codebase structure\n",
+    "Static Analysis": "**Code Reviewers**: Developers performing code quality assessments\n",
+    "default": "**System Users**: Individuals and systems using the functionality\n"
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "framework_commands": {
+    "Node.js": {
+      "install": "npm install",
+      "dev": "npm run dev",
+      "test": "npm test",
+      "build": "npm run build",
+      "start": "npm start"
+    },
+    "React": {
+      "install": "npm install",
+      "dev": "npm start",
+      "test": "npm test",
+      "build": "npm run build"
+    },
+    "NestJS": {
+      "install": "npm install",
+      "dev": "npm run start:dev",
+      "test": "npm run test",
+      "build": "npm run build",
+      "start": "npm run start:prod"
+    },
+    "Python": {
+      "install": "pip install -r requirements.txt",
+      "dev": "python app.py",
+      "test": "pytest",
+      "start": "python main.py"
+    },
+    "Flask": {
+      "install": "pip install -r requirements.txt",
+      "dev": "flask run --debug",
+      "test": "pytest",
+      "start": "python app.py"
+    },
+    "Django": {
+      "install": "pip install -r requirements.txt",
+      "dev": "python manage.py runserver",
+      "test": "python manage.py test",
+      "migrate": "python manage.py migrate"
+    },
+    "FastAPI": {
+      "install": "pip install -r requirements.txt",
+      "dev": "uvicorn main:app --reload",
+      "test": "pytest",
+      "start": "uvicorn main:app"
+    },
+    "Rust": {
+      "build": "cargo build",
+      "dev": "cargo run",
+      "test": "cargo test",
+      "release": "cargo build --release"
+    },
+    "Spring Boot": {
+      "build": "mvn clean compile",
+      "dev": "mvn spring-boot:run",
+      "test": "mvn test",
+      "package": "mvn package"
+    },
+    "default": {
+      "build": "# Add framework-specific build command",
+      "dev": "# Add framework-specific development command",
+      "test": "# Add framework-specific test command"
+    }
+  },
+  "command_sections": {
+    "analysis": {
+      "header": "## Analysis Commands\n\n```bash\n# Re-run SOTA analysis\ncodebase-analyzer analyze . --output-dir ./analysis --enable-fusion\n\n# Generate updated documentation\ncodebase-analyzer analyze . --output-dir ./docs --generate-docs\n```\n\n",
+      "description": "Commands for re-running analysis and generating documentation"
+    },
+    "development": {
+      "header": "## Development Commands\n\n",
+      "footer": "\n",
+      "description": "Framework-specific development commands"
+    },
+    "quality_gates": {
+      "header": "## Quality Gates\n\n",
+      "template": "- **Analysis Confidence**: {confidence}%\n- **Context Coverage**: {coverage}%\n",
+      "description": "Quality metrics and thresholds for analysis results"
+    }
+  }
+}

@@ -45,7 +45,11 @@ The Codebase Workflow Analyzer uses advanced static analysis combined with local
 git clone https://github.com/your-org/codebase-workflow-analyzer
 cd codebase-workflow-analyzer
 
-# Build the analyzer
+# Clean install (if rebuilding)
+cargo clean
+rm -rf target/
+
+# Build the analyzer (release mode recommended)
 cargo build --release
 
 # Set up local LLM (optional but recommended)
@@ -56,14 +60,38 @@ docker-compose up -d
 
 ```bash
 # Analyze a codebase with traditional methods
-./target/release/codebase-analyzer analyze /path/to/your/project
+./target/release/codebase-analyzer analyze --path /path/to/your/project
 
 # Enable LLM-powered analysis (requires Docker setup)
-./target/release/codebase-analyzer analyze /path/to/your/project --enable-llm
+./target/release/codebase-analyzer analyze --path /path/to/your/project --enable-llm
+
+# Enable SOTA fusion analysis with LLM and document generation
+./target/release/codebase-analyzer analyze --path /path/to/your/project --enable-fusion --enable-llm --generate-docs /path/to/output
 
 # Test on sample projects
 ./target/release/codebase-analyzer test-basic
 ./target/release/codebase-analyzer test-llm --enable-llm
+
+# Cache management
+./target/release/codebase-analyzer cache stats
+./target/release/codebase-analyzer cache clear
+
+# Setup Ollama (interactive)
+./target/release/codebase-analyzer setup-ollama
+```
+
+### Clean Rebuild Process
+
+If you encounter issues with outdated builds:
+
+```bash
+# Full clean rebuild
+cargo clean
+rm -rf target/
+cargo build --release
+
+# Alternative: Use cargo run with --release flag
+cargo run --release --bin codebase-analyzer analyze --path /your/project
 ```
 
 ## Architecture

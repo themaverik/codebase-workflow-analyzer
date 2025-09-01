@@ -1,9 +1,0 @@
-{
-  "primary_domains": [],
-  "secondary_domains": [],
-  "confidence_thresholds": {
-    "high_confidence": 0.8,
-    "medium_confidence": 0.6,
-    "low_confidence": 0.4
-  }
-}
