@@ -1,0 +1,78 @@
+---
+config:
+  theme: neo
+  layout: fixed
+---
+flowchart TB
+ subgraph subGraph0["Core Analysis Pipeline"]
+        FUSION["Hierarchical Result Fusion<br>hierarchical_result_fusion.rs"]
+        CONTEXT_DETECTOR["Context-Aware Framework Detector<br>context_aware_framework_detector.rs"]
+        CONTEXT_MGR["Hierarchical Context Manager<br>hierarchical_context_manager.rs"]
+        BUSINESS_GROUNDING["Business Context Grounding<br>business_context_grounding.rs"]
+  end
+ subgraph subGraph1["Framework Detection"]
+        ENHANCED_FW["Enhanced Framework Detector<br>enhanced_framework_detector.rs"]
+        BASIC_FW["Basic Framework Detector<br>framework_detector.rs"]
+        DOMAIN_ENGINE["Business Domain Engine<br>business_domain_engine.rs"]
+  end
+ subgraph subGraph2["AST Analysis"]
+        AST_ANALYZER["AST Analyzer<br>ast_analyzer.rs"]
+        CONTEXT_AST["Context-Aware AST Analyzer<br>context_aware_ast_analyzer.rs"]
+        EXTRACTORS["Language Extractors<br>extractors/"]
+  end
+ subgraph subGraph3["Language Analyzers"]
+        TS_ANALYZER["TypeScript Analyzer<br>analyzers/typescript/"]
+        JAVA_ANALYZER["Java Analyzer<br>analyzers/java/"]
+        PY_ANALYZER["Python Analyzer<br>analyzers/python/"]
+  end
+ subgraph subGraph4["Business Context <br>(Multiple Competing Systems)"]
+        OLD_BUSINESS["Business Purpose Extractor<br>business_purpose_extractor.rs<br>❌ HARDCODED DOMAINS"]
+        NEW_CONFIG["Business Context Config<br>business_context_config.rs<br>❌ JSON-DRIVEN"]
+        NEW_LLM["LLM Business Extractor<br>llm_business_extractor.rs<br>❌ NOT WORKING"]
+  end
+ subgraph subGraph5["LLM Integration (Not Working)"]
+        INTEL_ENGINE["Intelligence Engine<br>intelligence/mod.rs"]
+        LLM_CLIENT["LLM Client<br>intelligence/llm_client.rs<br>❌ OLLAMA NOT INTEGRATED"]
+  end
+ subgraph subGraph6["Configuration Files"]
+        DOMAINS_JSON["business_domains.json<br>❌ Complex Patterns"]
+        TEMPLATES["ccpm_templates.json<br>user_story_templates.json<br>workflow_templates.json"]
+        PROMPTS["llm_prompt_templates.json<br>❌ Not Used"]
+  end
+ subgraph subGraph7["Document Generation"]
+        GENERATORS["Document Generators<br>generators/"]
+        TEMPLATE_ENGINE["Template Engine<br>template_engine.rs"]
+  end
+    CLI["CLI Interface<br>src/cli/mod.rs"] --> FUSION & CONTEXT_DETECTOR
+    FUSION --> CONTEXT_DETECTOR & BUSINESS_GROUNDING & CONTEXT_MGR & GENERATORS
+    CONTEXT_DETECTOR --> ENHANCED_FW & CONTEXT_AST
+    ENHANCED_FW --> BASIC_FW & DOMAIN_ENGINE
+    CONTEXT_AST --> AST_ANALYZER
+    AST_ANALYZER --> EXTRACTORS
+    EXTRACTORS --> TS_ANALYZER & JAVA_ANALYZER & PY_ANALYZER
+    CLI -.-> OLD_BUSINESS & NEW_LLM
+    NEW_LLM -.-> NEW_CONFIG & DOMAINS_JSON
+    BUSINESS_GROUNDING -.-> INTEL_ENGINE
+    INTEL_ENGINE -.-> LLM_CLIENT
+    LLM_CLIENT -.-> PROMPTS
+    GENERATORS --> TEMPLATE_ENGINE & CCMP_OUTPUT["CCMP_OUTPUT"] & YAML_OUTPUT["YAML Analysis Report"] & MARKDOWN_OUTPUT["Technical Documentation"]
+    TEMPLATE_ENGINE --> TEMPLATES
+    WEB["Web Server<br>src/server/"]
+    CCPM_OUTPUT["CCPM Workflow<br>(.claude/ directory)"]
+     FUSION:::working
+     CONTEXT_DETECTOR:::working
+     BUSINESS_GROUNDING:::problematic
+     ENHANCED_FW:::working
+     DOMAIN_ENGINE:::problematic
+     AST_ANALYZER:::working
+     OLD_BUSINESS:::broken
+     NEW_CONFIG:::broken
+     NEW_LLM:::broken
+     INTEL_ENGINE:::broken
+     LLM_CLIENT:::broken
+     DOMAINS_JSON:::problematic
+     GENERATORS:::working
+     CLI:::working
+    classDef working fill:#90EE90
+    classDef broken fill:#FFB6C1
+    classDef problematic fill:#FFD700

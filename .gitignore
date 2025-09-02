@@ -1,6 +1,10 @@
 /target
 .specstory/
 
+# Claude Code specific files
+CLAUDE.md
+.claude/
+
 # macOS system files
 .DS_Store
 .DS_Store?
