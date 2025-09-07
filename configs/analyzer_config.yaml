@@ -1,0 +1,232 @@
+# Codebase Workflow Analyzer Configuration
+
+frameworks:
+  confidence_threshold: 0.7
+  enable_ast_validation: true
+
+business_domains:
+  classification_threshold: 0.5
+  enable_llm_enhancement: true
+
+output:
+  include_code_examples: true
+  generate_recommendations: true
+
+documentation_analysis:
+  enable_readme_extraction: true
+  enable_docs_scanning: true
+  validate_against_code: true
+  priority_code_over_docs: true
+  scan_patterns:
+    - "README.md"
+    - "README.rst"
+    - "docs/**/*.md"
+    - "CONTRIBUTING.md"
+    - "API.md"
+    - "CHANGELOG.md"
+  max_file_size_kb: 500
+  extract_sections:
+    - "description"
+    - "installation"
+    - "usage"
+    - "api"
+    - "architecture"
+    - "contributing"
+
+status_analysis:
+  scan_todo_comments: true
+  infer_implementation_status: true
+  classify_feature_completeness: true
+  include_placeholder_detection: true
+  comment_patterns:
+    - "TODO"
+    - "FIXME" 
+    - "HACK"
+    - "NOTE"
+    - "BUG"
+    - "DEPRECATED"
+  placeholder_indicators:
+    - "NotImplementedError"
+    - "todo!()"
+    - "unimplemented!()"
+    - "panic!(\"not implemented\")"
+    - "throw new Error(\"not implemented\")"
+  max_scan_depth: 10
+
+# Phase 2: Status Inference Engine Configuration
+status_inference:
+  enable_inference_engine: true
+  confidence_threshold: 0.6
+  enable_plugin_analyzers: true
+
+# Phase 3: Documentation Claims Extraction Configuration
+documentation_claims:
+  enable_claims_extraction: true
+  confidence_threshold: 0.6
+  max_file_size_kb: 500
+  context_window_lines: 3
+  documentation_patterns:
+    - "README.md"
+    - "README.rst"
+    - "docs/**/*.md"
+    - "API.md"
+    - "FEATURES.md"
+    - "CHANGELOG.md"
+    - "package.json"
+    - "Cargo.toml"
+  keyword_weights:
+    authentication: 1.0
+    oauth: 0.9
+    api: 0.8
+    crud: 0.8
+    secure: 0.9
+    integration: 0.7
+    real-time: 0.8
+    notifications: 0.7
+    payments: 0.8
+    user_management: 0.9
+
+# Code Reality Analysis Configuration
+code_reality:
+  enable_reality_analysis: true
+  max_file_size_kb: 1000
+  scan_patterns:
+    - "**/*.java"
+    - "**/*.ts"
+    - "**/*.js" 
+    - "**/*.py"
+    - "**/*.rs"
+    - "**/package.json"
+    - "**/Cargo.toml"
+    - "**/requirements.txt"
+    - "**/Dockerfile"
+  exclude_patterns:
+    - "**/node_modules/**"
+    - "**/target/**"
+    - "**/build/**"
+    - "**/.git/**"
+    - "**/dist/**"
+  implementation_level_thresholds:
+    complete_threshold: 0.8
+    partial_threshold: 0.5
+    skeleton_threshold: 0.2
+  confidence_weights:
+    class_definition: 0.3
+    method_implementation: 0.4
+    dependency_usage: 0.2
+    annotation_usage: 0.3
+
+# Conflict Resolution Configuration
+conflict_resolution:
+  enable_conflict_resolution: true
+  default_resolution_strategy: "PreferCode"
+  confidence_threshold: 0.6
+  severity_thresholds:
+    critical_threshold: 0.9
+    high_threshold: 0.7
+    medium_threshold: 0.5
+  resolution_preferences:
+    prefer_code_for_security: true
+    prefer_code_for_performance: true
+    prefer_documentation_for_features: false
+    always_merge_technology_info: true
+    flag_critical_mismatches: true
+
+# Dual-Category Status Analysis Configuration
+dual_category_analysis:
+  enable_dual_analysis: true
+  completion_score_weights:
+    explicit_weight: 0.4      # Weight for explicit TODO analysis
+    inferred_weight: 0.3      # Weight for inferred status analysis
+    implementation_weight: 0.2 # Weight for actual implementation evidence
+    documentation_weight: 0.1  # Weight for documentation claims
+  priority_calculation_weights:
+    business_impact_weight: 0.4
+    technical_complexity_weight: 0.2
+    dependency_weight: 0.2
+    urgency_weight: 0.2
+  confidence_thresholds:
+    high_confidence: 0.8
+    medium_confidence: 0.6
+    low_confidence: 0.4
+  action_generation_config:
+    max_recommended_actions: 10
+    prioritize_critical_conflicts: true
+    include_effort_estimates: true
+    generate_timeline_suggestions: true
+  
+  # CRUD Operation Analysis
+  crud_analysis:
+    enable_crud_detection: true
+    required_operations: ["create", "read", "update", "delete"]
+    partial_implementation_threshold: 0.5
+    analyze_database_models: true
+    analyze_api_endpoints: true
+    analyze_frontend_forms: true
+  
+  # Authentication/Authorization Analysis  
+  auth_analysis:
+    enable_auth_detection: true
+    detect_oauth_providers: true
+    detect_session_management: true
+    detect_permission_systems: true
+    oauth_providers:
+      - "google"
+      - "facebook" 
+      - "github"
+      - "twitter"
+      - "linkedin"
+      - "microsoft"
+    auth_patterns:
+      - "passport"
+      - "oauth"
+      - "jwt"
+      - "session"
+      - "auth0"
+      - "firebase-auth"
+  
+  # API Completeness Analysis
+  api_analysis:
+    enable_api_completeness: true
+    detect_missing_endpoints: true
+    detect_incomplete_error_handling: true
+    detect_missing_validation: true
+    standard_http_methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    rest_conventions: true
+    graphql_conventions: true
+  
+  # Database Schema Analysis
+  database_analysis:
+    enable_schema_analysis: true
+    detect_missing_relations: true
+    detect_incomplete_migrations: true
+    detect_missing_indexes: true
+    analyze_foreign_keys: true
+  
+  # Feature Completeness Analysis
+  feature_analysis:
+    enable_feature_tracking: true
+    detect_partial_implementations: true
+    analyze_test_coverage_gaps: true
+    detect_missing_error_states: true
+    ui_completeness_indicators:
+      - "loading states"
+      - "error states" 
+      - "empty states"
+      - "validation messages"
+    
+  # Plugin Configuration
+  plugins:
+    weight_crud_analyzer: 0.25
+    weight_auth_analyzer: 0.20
+    weight_api_analyzer: 0.20
+    weight_database_analyzer: 0.15
+    weight_feature_analyzer: 0.15
+    weight_ui_analyzer: 0.05
+
+claude_md_generation:
+  include_documentation_context: true
+  include_status_analysis: true
+  include_validation_conflicts: true
+  format_without_emojis: true
+  validation_conflict_threshold: 0.3

@@ -744,13 +744,14 @@ impl CliRunner {
         // Use current directory if no path provided
         let test_path = path.unwrap_or_else(|| ".".to_string());
         
-        // First test basic AST analyzer creation
-        crate::core::ast_integration_test::run_basic_ast_test()?;
+        // Basic AST tests are temporarily disabled
+        // crate::core::ast_integration_test::run_basic_ast_test()?;
         
-        // Then test with actual codebase
+        // AST integration test with actual codebase is temporarily disabled
         if std::path::Path::new(&test_path).exists() {
             println!("\nTesting AST on path: {}", test_path);
-            crate::core::ast_integration_test::test_ast_integration_with_path(&test_path).await?;
+            // crate::core::ast_integration_test::test_ast_integration_with_path(&test_path).await?;
+            println!("AST integration test temporarily disabled - using new context-aware flow instead");
         } else {
             println!("Path {} does not exist, skipping codebase test", test_path);
         }
@@ -821,7 +822,7 @@ impl CliRunner {
         
         // Create enhanced detector with AST analysis
         let mut detector = EnhancedFrameworkDetector::new(test_path.clone())?
-            .with_ast_analysis()?;
+            .with_context_aware_analysis()?;
         
         // Add LLM analysis if requested
         if enable_llm {

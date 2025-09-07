@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use anyhow::{Result, Context};
 
 use crate::core::ast_analyzer::CodeSegment;
+use crate::core::context_types::EnhancedSegmentContext;
 
 #[derive(Debug, Clone)]
 pub struct LocalLLMManager {
@@ -181,7 +182,7 @@ impl LocalLLMManager {
     ) -> Result<BatchAnalysisResult> {
         let start_time = std::time::Instant::now();
         
-        println!("🧠 Analyzing {} code segments with LLM...", segments.len());
+        println!("Analyzing {} code segments with LLM...", segments.len());
 
         // Get appropriate prompt template
         let template = self.prompt_templates.get_template(&analysis_type);
@@ -191,7 +192,7 @@ impl LocalLLMManager {
         let mut all_analyses = Vec::new();
 
         for (batch_idx, batch) in segments.chunks(batch_size).enumerate() {
-            println!("  📦 Processing batch {} ({} segments)", batch_idx + 1, batch.len());
+            println!("  Processing batch {} ({} segments)", batch_idx + 1, batch.len());
             
             let batch_prompt = template.render_batch(batch)?;
             
@@ -204,12 +205,12 @@ impl LocalLLMManager {
                     Ok(result) => break result,
                     Err(e) if retries < max_retries => {
                         retries += 1;
-                        println!("    ⚠️  Batch {} failed, retrying ({}/{})...", batch_idx + 1, retries, max_retries);
+                        println!("    Batch {} failed, retrying ({}/{})...", batch_idx + 1, retries, max_retries);
                         tokio::time::sleep(Duration::from_secs(5)).await; // Wait 5 seconds before retry
                         continue;
                     }
                     Err(e) => {
-                        println!("    ❌ Batch {} failed after {} retries: {}", batch_idx + 1, max_retries, e);
+                        println!("    Batch {} failed after {} retries: {}", batch_idx + 1, max_retries, e);
                         // Continue with remaining batches instead of failing completely
                         continue;
                     }
@@ -221,10 +222,10 @@ impl LocalLLMManager {
                 Ok(batch_analyses) => {
                     let count = batch_analyses.len();
                     all_analyses.extend(batch_analyses);
-                    println!("    ✅ Batch {} completed ({} analyses)", batch_idx + 1, count);
+                    println!("    Batch {} completed ({} analyses)", batch_idx + 1, count);
                 }
                 Err(e) => {
-                    println!("    ⚠️  Failed to parse batch {} response: {}", batch_idx + 1, e);
+                    println!("    Failed to parse batch {} response: {}", batch_idx + 1, e);
                     // Continue with remaining batches
                 }
             }
@@ -239,6 +240,83 @@ impl LocalLLMManager {
             segments: all_analyses,
             summary,
             project_analysis: None, // TODO: Extract project analysis from LLM response
+            processing_time_ms: processing_time,
+        })
+    }
+
+    /// Enhanced method that analyzes segments with full project context
+    pub async fn analyze_enhanced_segments(
+        &self,
+        enhanced_segments: &[EnhancedSegmentContext],
+        analysis_type: AnalysisType,
+    ) -> Result<BatchAnalysisResult> {
+        let start_time = std::time::Instant::now();
+        
+        println!("Analyzing {} enhanced segments with project context...", enhanced_segments.len());
+
+        // Get appropriate prompt template
+        let template = self.prompt_templates.get_template(&analysis_type);
+        
+        // Process segments in batches to stay within context window
+        let batch_size = self.calculate_enhanced_batch_size(enhanced_segments);
+        let mut all_analyses = Vec::new();
+
+        for (batch_idx, batch) in enhanced_segments.chunks(batch_size).enumerate() {
+            println!("  Processing enhanced batch {} ({} segments)", batch_idx + 1, batch.len());
+            
+            let batch_prompt = template.render_enhanced_batch(batch)?;
+            
+            // Retry logic for failed requests
+            let mut retries = 0;
+            let max_retries = 2;
+            
+            let batch_result = loop {
+                match self.send_analysis_request(&batch_prompt, &analysis_type).await {
+                    Ok(result) => break result,
+                    Err(e) if retries < max_retries => {
+                        retries += 1;
+                        println!("    Enhanced batch {} failed, retrying ({}/{})...", batch_idx + 1, retries, max_retries);
+                        tokio::time::sleep(Duration::from_secs(5)).await; // Wait 5 seconds before retry
+                        continue;
+                    }
+                    Err(e) => {
+                        println!("    Enhanced batch {} failed after {} retries: {}", batch_idx + 1, max_retries, e);
+                        // Continue with remaining batches instead of failing completely
+                        continue;
+                    }
+                }
+            };
+            
+            // Parse the response with enhanced context
+            match self.parse_enhanced_batch_response(&batch_result, batch) {
+                Ok(batch_analyses) => {
+                    let count = batch_analyses.len();
+                    all_analyses.extend(batch_analyses);
+                    println!("    Enhanced batch {} completed ({} analyses)", batch_idx + 1, count);
+                }
+                Err(e) => {
+                    println!("    Failed to parse enhanced batch {} response: {}", batch_idx + 1, e);
+                    // Continue with remaining batches
+                }
+            }
+        }
+
+        let processing_time = start_time.elapsed().as_millis() as u64;
+
+        // Create summary with enhanced context information
+        let summary = self.create_enhanced_analysis_summary(&all_analyses, enhanced_segments);
+
+        // Extract project analysis from enhanced segments
+        let project_analysis = if !enhanced_segments.is_empty() {
+            self.extract_project_analysis(&enhanced_segments[0].project_context)
+        } else {
+            None
+        };
+
+        Ok(BatchAnalysisResult {
+            segments: all_analyses,
+            summary,
+            project_analysis,
             processing_time_ms: processing_time,
         })
     }
@@ -297,6 +375,29 @@ impl LocalLLMManager {
             10 // Smaller batches for large projects
         } else {
             20 // Normal batch size for smaller projects
+        };
+        
+        // Ensure we process at least 1 segment, but respect batch limits
+        std::cmp::max(1, std::cmp::min(max_segments, batch_limit))
+    }
+
+    fn calculate_enhanced_batch_size(&self, enhanced_segments: &[EnhancedSegmentContext]) -> usize {
+        // Enhanced segments include more context, so reduce batch size
+        let avg_tokens_per_segment = 400; // More tokens due to project context
+        let template_tokens = 800; // More overhead for enhanced templates
+        let response_tokens = 1000; // Reserve space for response
+        
+        let available_tokens = self.config.context_window
+            .saturating_sub(template_tokens)
+            .saturating_sub(response_tokens);
+
+        let max_segments = available_tokens / avg_tokens_per_segment;
+        
+        // Smaller batches for enhanced segments
+        let batch_limit = if enhanced_segments.len() > 50 {
+            5 // Very small batches for large projects with context
+        } else {
+            10 // Reduced batch size for enhanced segments
         };
         
         // Ensure we process at least 1 segment, but respect batch limits
@@ -571,6 +672,221 @@ impl LocalLLMManager {
             Err(_) => Ok(false),
         }
     }
+
+    fn parse_enhanced_batch_response(
+        &self,
+        response: &str,
+        batch: &[EnhancedSegmentContext],
+    ) -> Result<Vec<SegmentAnalysis>> {
+        println!("\nFull LLM Response ({} chars):", response.len());
+        println!("{}", response);
+        println!("End of LLM Response\n");
+        
+        // Try to parse as JSON first
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(response) {
+            println!("LLM returned valid JSON, parsing structured response");
+            return self.parse_enhanced_json_response(&parsed, batch);
+        }
+
+        // Try to extract JSON from mixed text response
+        if let Some(json_str) = self.extract_json_from_text(response) {
+            println!("Extracted JSON from mixed text response");
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                return self.parse_enhanced_json_response(&parsed, batch);
+            }
+        }
+
+        println!("LLM returned non-JSON text, falling back to enhanced keyword extraction");
+        
+        // Fallback to enhanced text parsing with context
+        self.parse_enhanced_text_response(response, batch)
+    }
+
+    fn parse_enhanced_json_response(
+        &self,
+        json: &serde_json::Value,
+        batch: &[EnhancedSegmentContext],
+    ) -> Result<Vec<SegmentAnalysis>> {
+        let mut analyses = Vec::new();
+        
+        // Try to parse the new business-focused structure first
+        if let Some(functional_reqs) = json.get("functional_requirements").and_then(|f| f.get("domains")) {
+            analyses.extend(self.parse_domain_requirements(functional_reqs, "Functional")?);
+        }
+        
+        if let Some(non_functional_reqs) = json.get("non_functional_requirements").and_then(|f| f.get("domains")) {
+            analyses.extend(self.parse_domain_requirements(non_functional_reqs, "Non-Functional")?);
+        }
+        
+        // Fallback to old structure if new structure not found
+        if analyses.is_empty() {
+            if let Some(segments) = json.get("segments").and_then(|s| s.as_array()) {
+                for (idx, segment_json) in segments.iter().enumerate() {
+                    if idx >= batch.len() {
+                        break;
+                    }
+
+                    let analysis = SegmentAnalysis {
+                        segment_id: format!("enhanced_segment_{}", idx),
+                        primary_domain: segment_json
+                            .get("primary_domain")
+                            .and_then(|d| d.as_str())
+                            .map(|s| s.to_string()),
+                        confidence: segment_json
+                            .get("confidence")
+                            .and_then(|c| c.as_f64())
+                            .unwrap_or(0.0) as f32,
+                        evidence: segment_json
+                            .get("evidence")
+                            .and_then(|e| e.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        secondary_domains: segment_json
+                            .get("secondary_domains")
+                            .and_then(|e| e.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        quality_score: segment_json
+                            .get("quality_score")
+                            .and_then(|q| q.as_f64())
+                            .map(|q| q as f32),
+                        patterns: Vec::new(),
+                    };
+
+                    analyses.push(analysis);
+                }
+            }
+        }
+
+        Ok(analyses)
+    }
+
+    fn parse_enhanced_text_response(
+        &self,
+        response: &str,
+        batch: &[EnhancedSegmentContext],
+    ) -> Result<Vec<SegmentAnalysis>> {
+        // Enhanced text parsing with project context
+        let mut analyses = Vec::new();
+        
+        // For each segment in the batch, create an enhanced analysis
+        for (idx, enhanced_segment) in batch.iter().enumerate() {
+            let primary_domain = self.extract_enhanced_domain_from_text(response, enhanced_segment);
+            
+            let analysis = SegmentAnalysis {
+                segment_id: format!("enhanced_segment_{}", idx),
+                primary_domain,
+                confidence: 0.6, // Higher confidence for enhanced analysis
+                evidence: vec![
+                    format!("Project type: {}", enhanced_segment.project_context.project_type),
+                    format!("File: {}", enhanced_segment.segment_context.file_context.file_path.display()),
+                    response.chars().take(100).collect(),
+                ],
+                secondary_domains: enhanced_segment.business_hints.clone(),
+                quality_score: Some(enhanced_segment.segment_context.confidence),
+                patterns: enhanced_segment.architectural_context.patterns.clone(),
+            };
+            analyses.push(analysis);
+        }
+
+        Ok(analyses)
+    }
+
+    fn extract_enhanced_domain_from_text(&self, text: &str, enhanced_segment: &EnhancedSegmentContext) -> Option<String> {
+        let text_lower = text.to_lowercase();
+        
+        // First check against project business domains
+        for domain in &enhanced_segment.project_context.business_domains {
+            if text_lower.contains(&domain.name.to_lowercase()) {
+                return Some(domain.name.clone());
+            }
+        }
+
+        // Then check business hints
+        for hint in &enhanced_segment.business_hints {
+            if text_lower.contains(&hint.to_lowercase()) {
+                return Some(hint.clone());
+            }
+        }
+
+        // Fallback to standard domain keywords
+        self.extract_domain_from_text(text)
+    }
+
+    fn create_enhanced_analysis_summary(&self, analyses: &[SegmentAnalysis], enhanced_segments: &[EnhancedSegmentContext]) -> AnalysisSummary {
+        let mut domain_distribution = HashMap::new();
+        let mut total_confidence = 0.0;
+        let mut confidence_count = 0;
+
+        for analysis in analyses {
+            if let Some(domain) = &analysis.primary_domain {
+                *domain_distribution.entry(domain.clone()).or_insert(0) += 1;
+            }
+            
+            if analysis.confidence > 0.0 {
+                total_confidence += analysis.confidence;
+                confidence_count += 1;
+            }
+        }
+
+        let average_confidence = if confidence_count > 0 {
+            total_confidence / confidence_count as f32
+        } else {
+            0.0
+        };
+
+        // Extract key patterns from enhanced segments
+        let mut pattern_counts = HashMap::new();
+        for enhanced_segment in enhanced_segments {
+            for pattern in &enhanced_segment.architectural_context.patterns {
+                *pattern_counts.entry(pattern.clone()).or_insert(0) += 1;
+            }
+            for hint in &enhanced_segment.business_hints {
+                *pattern_counts.entry(format!("business_hint:{}", hint)).or_insert(0) += 1;
+            }
+        }
+
+        let key_patterns: Vec<String> = pattern_counts
+            .into_iter()
+            .filter(|(_, count)| *count > 1)
+            .map(|(pattern, _)| pattern)
+            .collect();
+
+        AnalysisSummary {
+            total_segments: analyses.len(),
+            domain_distribution,
+            average_confidence,
+            key_patterns,
+        }
+    }
+
+    fn extract_project_analysis(&self, project_context: &crate::core::context_types::ProjectContext) -> Option<ProjectAnalysis> {
+        Some(ProjectAnalysis {
+            primary_business_domain: project_context.business_domains
+                .first()
+                .map(|d| d.name.clone())
+                .unwrap_or_else(|| "Unknown".to_string()),
+            project_type: project_context.project_type.clone(),
+            functional_requirements: RequirementCategory {
+                description: "Core business functionalities".to_string(),
+                domains: HashMap::new(), // Will be populated by analysis results
+            },
+            non_functional_requirements: RequirementCategory {
+                description: "Supporting infrastructure and cross-cutting concerns".to_string(),
+                domains: HashMap::new(), // Will be populated by analysis results
+            },
+        })
+    }
 }
 
 // Prompt Template Engine
@@ -692,6 +1008,69 @@ impl PromptTemplate {
         Ok(format!(
             "{}\n\nUser: {}\n\nAssistant:",
             self.system_prompt, user_prompt
+        ))
+    }
+
+    fn render_enhanced_batch(&self, enhanced_segments: &[EnhancedSegmentContext]) -> Result<String> {
+        // Extract project context from the first segment (all segments share the same project context)
+        let project_context = if !enhanced_segments.is_empty() {
+            Some(&enhanced_segments[0].project_context)
+        } else {
+            None
+        };
+
+        let segments_text = enhanced_segments
+            .iter()
+            .enumerate()
+            .map(|(idx, enhanced_segment)| {
+                let segment = &enhanced_segment.segment_context.segment;
+                let business_hints = if enhanced_segment.business_hints.is_empty() {
+                    "None".to_string()
+                } else {
+                    enhanced_segment.business_hints.join(", ")
+                };
+                
+                format!(
+                    "Segment {}: {}\nFile: {}\nType: {}\nBusiness Hints: {}\nFile Role: {:?}\nArchitectural Layer: {:?}\n---",
+                    idx,
+                    segment.content.chars().take(500).collect::<String>(),
+                    enhanced_segment.segment_context.file_context.file_path.display(),
+                    segment.segment_type,
+                    business_hints,
+                    enhanced_segment.segment_context.file_context.role_in_project,
+                    enhanced_segment.architectural_context.layer
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
+
+        // Create enhanced user prompt with project context
+        let mut enhanced_user_prompt = if let Some(project_ctx) = project_context {
+            let project_info = format!(
+                "PROJECT CONTEXT:\n- Project Type: {}\n- Primary Business Domains: {}\n- Overall Confidence: {:.2}\n\nCODE SEGMENTS TO ANALYZE:\n{}",
+                project_ctx.project_type,
+                project_ctx.business_domains.iter()
+                    .map(|d| format!("{} ({:.2})", d.name, d.confidence))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                project_ctx.confidence,
+                segments_text
+            );
+            
+            self.user_prompt_template.replace("{segments}", &project_info)
+        } else {
+            self.user_prompt_template.replace("{segments}", &segments_text)
+        };
+
+        // Add enhanced instruction for context-aware analysis
+        enhanced_user_prompt = enhanced_user_prompt.replace(
+            "Based on the code segments, provide a comprehensive business analysis:",
+            "Based on the PROJECT CONTEXT and code segments below, provide a comprehensive business analysis that considers the overall project purpose:"
+        );
+
+        Ok(format!(
+            "{}\n\nUser: {}\n\nAssistant:",
+            self.system_prompt, enhanced_user_prompt
         ))
     }
 }
