@@ -369,6 +369,35 @@ impl CliRunner {
         }
         perf_monitor.end_phase("Cache Storage");
         
+        // Save raw analysis results as structured data
+        if let Some(ref result) = analysis_result {
+            perf_monitor.start_phase("Analysis Results Export");
+            println!("Saving structured analysis results...");
+            
+            // Create analysis output directory
+            let analysis_dir = format!("{}/analysis-results", path);
+            std::fs::create_dir_all(&analysis_dir)?;
+            
+            // Save as YAML for human readability
+            let yaml_content = serde_yaml::to_string(&result)?;
+            std::fs::write(format!("{}/complete-analysis.yaml", analysis_dir), yaml_content)?;
+            
+            // Save as JSON for programmatic access
+            let json_content = serde_json::to_string_pretty(&result)?;
+            std::fs::write(format!("{}/complete-analysis.json", analysis_dir), json_content)?;
+            
+            // Generate summary report
+            let summary_report = self.generate_analysis_summary_report(&result, &path)?;
+            std::fs::write(format!("{}/analysis-summary.md", analysis_dir), summary_report)?;
+            
+            println!("Analysis results saved to: {}", analysis_dir);
+            println!("  - complete-analysis.yaml (human-readable)");
+            println!("  - complete-analysis.json (programmatic)");
+            println!("  - analysis-summary.md (executive summary)");
+            
+            perf_monitor.end_phase("Analysis Results Export");
+        }
+
         // Generate documentation if requested
         let docs_location = if let Some(docs_dir) = generate_docs {
             perf_monitor.start_phase("Document Generation");
@@ -1544,6 +1573,67 @@ impl CliRunner {
         Ok(engine.render(template))
     }
     
+    fn generate_analysis_summary_report(&self, result: &crate::core::context_aware_framework_detector::ContextAwareFrameworkAnalysisResult, project_path: &str) -> Result<String> {
+        let project_name = std::path::Path::new(project_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Unknown Project");
+            
+        let mut report = String::new();
+        
+        report.push_str(&format!("# Analysis Summary Report - {}\n\n", project_name));
+        report.push_str(&format!("**Generated**: {}\n\n", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
+        
+        // Executive Summary
+        report.push_str("## Executive Summary\n\n");
+        if let Some(fusion_result) = &result.hierarchical_fusion {
+            if let Some(framework) = &fusion_result.consolidated_results.primary_framework {
+                report.push_str(&format!("Primary technology stack identified as **{}** with comprehensive analysis ", framework));
+                report.push_str(&format!("across {} code segments.\n\n", result.context_awareness_summary.total_segments_analyzed));
+            }
+            
+            if let Some(domain) = &fusion_result.consolidated_results.primary_business_domain {
+                report.push_str(&format!("Business domain classified as **{}** with {:.1}% confidence.\n\n", 
+                                       domain.name, domain.confidence * 100.0));
+            }
+        }
+        
+        // Framework Analysis
+        report.push_str("## Framework Detection Results\n\n");
+        for framework in &result.traditional_analysis.detected_frameworks {
+            report.push_str(&format!("- **{:?}**: {:.1}% confidence\n", framework.framework, framework.confidence * 100.0));
+            for evidence in &framework.evidence {
+                report.push_str(&format!("  - Evidence: {:?}\n", evidence));
+            }
+        }
+        
+        // Business Domain Coverage
+        report.push_str("\n## Business Domain Coverage\n\n");
+        for (domain, count) in &result.context_awareness_summary.business_domain_coverage {
+            report.push_str(&format!("- **{}**: {} code segments analyzed\n", domain, count));
+        }
+        
+        // Performance Metrics
+        report.push_str("\n## Analysis Performance\n\n");
+        report.push_str(&format!("- **Total Analysis Time**: {}ms\n", result.performance_metrics.total_analysis_time_ms));
+        report.push_str(&format!("- **Segments Analyzed**: {}\n", result.context_awareness_summary.total_segments_analyzed));
+        report.push_str(&format!("- **Average Confidence**: {:.1}%\n", result.context_awareness_summary.average_confidence * 100.0));
+        report.push_str(&format!("- **Context Coverage**: {:.1}%\n", result.context_awareness_summary.context_completeness_score * 100.0));
+        
+        // Quality Metrics
+        if let Some(fusion_result) = &result.hierarchical_fusion {
+            report.push_str("\n## Quality Assessment\n\n");
+            report.push_str(&format!("- **Overall Fusion Quality**: {:.1}%\n", fusion_result.quality_metrics.overall_fusion_quality * 100.0));
+            report.push_str(&format!("- **Tier Alignment Score**: {:.1}%\n", fusion_result.quality_metrics.tier_alignment_score * 100.0));
+            report.push_str(&format!("- **Consensus Strength**: {:.1}%\n", fusion_result.quality_metrics.consensus_strength * 100.0));
+        }
+        
+        report.push_str("\n---\n");
+        report.push_str("*Generated by SOTA Hierarchical Context-Aware Analysis System*\n");
+        
+        Ok(report)
+    }
+    
     fn generate_basic_business_context(
         &self, 
         result: &crate::core::context_aware_framework_detector::ContextAwareFrameworkAnalysisResult, 
@@ -1670,6 +1760,101 @@ impl CliRunner {
         }
         
         file_names
+    }
+    
+    // Helper methods for enhanced PRD generation
+    fn generate_domain_vision_statement(&self, domain: &str) -> String {
+        match domain.to_lowercase().as_str() {
+            "authentication" => "Provide secure user authentication and access control".to_string(),
+            "user management" => "Enable comprehensive user account management and profile administration".to_string(),
+            "api endpoint handling" => "Deliver robust API services for data exchange and integration".to_string(),
+            "data handling and modeling" => "Facilitate efficient data processing and storage management".to_string(),
+            "web services" => "Provide reliable web-based services and functionality".to_string(),
+            "content management" => "Enable dynamic content creation, management, and publishing".to_string(),
+            "e-commerce" | "shopping" => "Support online commerce transactions and product management".to_string(),
+            "payment processing" => "Handle secure financial transactions and billing operations".to_string(),
+            _ => format!("Provide specialized {} functionality to users", domain),
+        }
+    }
+    
+    fn generate_domain_persona(&self, domain: &str) -> (String, String, String) {
+        match domain.to_lowercase().as_str() {
+            "authentication" => (
+                "Security Administrator".to_string(),
+                "Manages user authentication and system security".to_string(),
+                "Ensure secure access control and user verification".to_string()
+            ),
+            "user management" => (
+                "User Administrator".to_string(),
+                "Handles user accounts and profile management".to_string(),
+                "Efficiently manage user data and account lifecycle".to_string()
+            ),
+            "api endpoint handling" => (
+                "API Consumer".to_string(),
+                "Integrates with system APIs for data exchange".to_string(),
+                "Access reliable and well-documented API services".to_string()
+            ),
+            "content management" => (
+                "Content Manager".to_string(),
+                "Creates and manages digital content".to_string(),
+                "Easily publish and maintain content across the platform".to_string()
+            ),
+            "e-commerce" | "shopping" => (
+                "Online Shopper".to_string(),
+                "Purchases products through the online platform".to_string(),
+                "Find products easily and complete purchases securely".to_string()
+            ),
+            _ => (
+                "End User".to_string(),
+                format!("Uses {} functionality", domain),
+                format!("Efficiently access {} features", domain)
+            )
+        }
+    }
+    
+    fn generate_domain_user_stories(&self, domain: &str, _segment_count: u32) -> Vec<String> {
+        match domain.to_lowercase().as_str() {
+            "authentication" => vec![
+                "As a user, I want to securely log into the system".to_string(),
+                "As a user, I want to reset my password if forgotten".to_string(),
+                "As an admin, I want to manage user access permissions".to_string(),
+            ],
+            "user management" => vec![
+                "As a user, I want to update my profile information".to_string(),
+                "As an admin, I want to create and deactivate user accounts".to_string(),
+                "As a user, I want to view my account activity history".to_string(),
+            ],
+            "api endpoint handling" => vec![
+                "As a developer, I want to access well-documented API endpoints".to_string(),
+                "As a system, I want to handle API requests efficiently".to_string(),
+                "As a user, I want the system to respond quickly to requests".to_string(),
+            ],
+            "content management" => vec![
+                "As an editor, I want to create and publish content".to_string(),
+                "As a user, I want to search and browse available content".to_string(),
+                "As an admin, I want to moderate and organize content".to_string(),
+            ],
+            "e-commerce" | "shopping" => vec![
+                "As a customer, I want to browse and search for products".to_string(),
+                "As a customer, I want to add items to my cart and checkout".to_string(),
+                "As a merchant, I want to manage my product inventory".to_string(),
+            ],
+            _ => vec![
+                format!("As a user, I want to access {} functionality", domain),
+                format!("As a user, I want {} to work reliably", domain),
+            ]
+        }
+    }
+    
+    fn generate_domain_success_metric(&self, domain: &str) -> String {
+        match domain.to_lowercase().as_str() {
+            "authentication" => "User login success rate > 99%".to_string(),
+            "user management" => "User account operations complete within 2 seconds".to_string(),
+            "api endpoint handling" => "API response time < 200ms for 95% of requests".to_string(),
+            "content management" => "Content publishing workflow completion rate > 95%".to_string(),
+            "e-commerce" | "shopping" => "Shopping cart conversion rate improvement".to_string(),
+            _ => format!("{} functionality user satisfaction > 90%", domain),
+        }
     }
     
     fn generate_prd_from_sota(&self, result: &crate::core::context_aware_framework_detector::ContextAwareFrameworkAnalysisResult, project_path: &str) -> Result<String> {
