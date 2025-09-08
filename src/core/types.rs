@@ -12,7 +12,7 @@ pub enum Language {
     Go,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Framework {
     // JavaScript/TypeScript
     React,
@@ -47,7 +47,7 @@ pub enum Framework {
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum LanguageEcosystem {
     JavaScript,
     TypeScript,
