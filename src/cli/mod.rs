@@ -309,10 +309,11 @@ impl CliRunner {
             business_confidence = analysis.business_context.confidence;
         }
         
-        // Extract documentation (including external sources)
+        // Extract documentation (including external sources and cross-repository analysis)
         let documentation_info = if !external_docs_paths.is_empty() || generate_docs.is_some() {
             perf_monitor.start_phase("Documentation Extraction");
             use crate::core::documentation_extractor::DocumentationExtractor;
+            use crate::core::analyzers::cross_repository_analyzer::CrossRepositoryAnalyzer;
             
             let extractor = DocumentationExtractor::new()?;
             let doc_result = if !external_docs_paths.is_empty() {
@@ -326,9 +327,37 @@ impl CliRunner {
             println!("Documentation extraction complete: {:.1}% confidence, {} technologies found",
                      doc_result.confidence_score * 100.0,
                      doc_result.technologies.len());
+
+            // Perform cross-repository analysis if external docs exist
+            let cross_repo_analysis = if !external_docs_paths.is_empty() {
+                perf_monitor.start_phase("Cross-Repository Analysis");
+                println!("Performing cross-repository documentation analysis...");
+                
+                let cross_repo_analyzer = CrossRepositoryAnalyzer::new(&path_buf)?;
+                let cross_repo_result = cross_repo_analyzer.analyze_cross_repository_documentation(
+                    &path_buf,
+                    &external_docs_paths,
+                )?;
+                
+                println!("Cross-repository analysis complete:");
+                println!("  Project relationships found: {}", cross_repo_result.project_relationships.len());
+                println!("  Relevant documentation entries: {}", cross_repo_result.relevant_documentation.len());
+                if let Some(parent_context) = &cross_repo_result.parent_project_context {
+                    println!("  Parent project detected: {} (confidence: {:.1}%)", 
+                             parent_context.parent_project_name, 
+                             parent_context.context_confidence * 100.0);
+                    println!("  Project role: {}", parent_context.project_role);
+                    println!("  Sibling projects: {}", parent_context.sibling_projects.len());
+                }
+                
+                perf_monitor.end_phase("Cross-Repository Analysis");
+                Some(cross_repo_result)
+            } else {
+                None
+            };
             
             perf_monitor.end_phase("Documentation Extraction");
-            Some(doc_result)
+            Some((doc_result, cross_repo_analysis))
         } else {
             None
         };
