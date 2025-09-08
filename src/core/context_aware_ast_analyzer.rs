@@ -18,7 +18,7 @@ impl ContextAwareASTAnalyzer {
     pub fn new() -> Result<Self> {
         Ok(Self {
             ast_analyzer: ASTAnalyzer::new()?,
-            context_manager: HierarchicalContextManager::new()?,
+            context_manager: HierarchicalContextManager::new(), // new() doesn't return Result
             config: Config::instance(),
         })
     }
