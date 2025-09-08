@@ -40,6 +40,11 @@ pub enum Commands {
         #[arg(long)]
         generate_docs: Option<String>,
         
+        /// External documentation paths (comma-separated)
+        /// Example: --ext-docs-path "/external/docs1,/external/docs2,./local-docs"
+        #[arg(long)]
+        ext_docs_path: Option<String>,
+        
         /// Use SOTA hierarchical result fusion analysis
         #[arg(long, default_value = "true")]
         enable_fusion: bool,
@@ -131,18 +136,19 @@ impl CliRunner {
                 path, 
                 analyzer, 
                 enable_llm,
-                generate_docs, 
+                generate_docs,
+                ext_docs_path,
                 enable_fusion,
                 #[cfg(feature = "integrations")]
                 enable_integrations
             } => {
                 #[cfg(feature = "integrations")]
                 {
-                    self.run_analysis_with_integrations(path, analyzer, enable_llm, generate_docs, enable_fusion, enable_integrations).await
+                    self.run_analysis_with_integrations(path, analyzer, enable_llm, generate_docs, ext_docs_path, enable_fusion, enable_integrations).await
                 }
                 #[cfg(not(feature = "integrations"))]
                 {
-                    self.run_analysis(path, analyzer, enable_llm, generate_docs, enable_fusion).await
+                    self.run_analysis(path, analyzer, enable_llm, generate_docs, ext_docs_path, enable_fusion).await
                 }
             }
             Commands::List => {
@@ -177,7 +183,7 @@ impl CliRunner {
         }
     }
     
-    async fn run_analysis(&self, path: String, analyzer: Option<String>, enable_llm: bool, generate_docs: Option<String>, enable_fusion: bool) -> Result<()> {
+    async fn run_analysis(&self, path: String, analyzer: Option<String>, enable_llm: bool, generate_docs: Option<String>, ext_docs_path: Option<String>, enable_fusion: bool) -> Result<()> {
         use crate::core::performance_monitor::PerformanceMonitor;
         use crate::core::cache_manager::CacheManager;
         
@@ -196,6 +202,20 @@ impl CliRunner {
         }
         
         let path_buf = std::path::PathBuf::from(&path);
+        
+        // Parse and validate external documentation paths
+        let external_docs_paths = if let Some(ext_paths) = &ext_docs_path {
+            self.parse_external_docs_paths(ext_paths, &path_buf)?
+        } else {
+            Vec::new()
+        };
+        
+        if !external_docs_paths.is_empty() {
+            println!("External documentation sources: {}", external_docs_paths.len());
+            for (i, doc_path) in external_docs_paths.iter().enumerate() {
+                println!("  {}. {}", i + 1, doc_path.display());
+            }
+        }
         
         // Check cache first
         perf_monitor.start_phase("Cache Check");
@@ -289,6 +309,30 @@ impl CliRunner {
             business_confidence = analysis.business_context.confidence;
         }
         
+        // Extract documentation (including external sources)
+        let documentation_info = if !external_docs_paths.is_empty() || generate_docs.is_some() {
+            perf_monitor.start_phase("Documentation Extraction");
+            use crate::core::documentation_extractor::DocumentationExtractor;
+            
+            let extractor = DocumentationExtractor::new()?;
+            let doc_result = if !external_docs_paths.is_empty() {
+                println!("Extracting multi-source documentation...");
+                extractor.extract_multi_source_documentation(&path_buf, &external_docs_paths)?
+            } else {
+                println!("Extracting project documentation...");
+                extractor.extract_documentation(&path_buf)?
+            };
+            
+            println!("Documentation extraction complete: {:.1}% confidence, {} technologies found",
+                     doc_result.confidence_score * 100.0,
+                     doc_result.technologies.len());
+            
+            perf_monitor.end_phase("Documentation Extraction");
+            Some(doc_result)
+        } else {
+            None
+        };
+
         // Cache the analysis results (placeholder for now)
         perf_monitor.start_phase("Cache Storage");
         if enable_fusion {
@@ -374,7 +418,7 @@ impl CliRunner {
                         }
                     }
                     Err(e) => {
-                        println!("❌ Error reading cache stats: {}", e);
+                        println!("Error reading cache stats: {}", e);
                     }
                 }
             }
@@ -557,9 +601,9 @@ impl CliRunner {
     }
     
     #[cfg(feature = "integrations")]
-    async fn run_analysis_with_integrations(&self, path: String, analyzer: Option<String>, enable_llm: bool, generate_docs: Option<String>, enable_fusion: bool, enable_integrations: bool) -> Result<()> {
+    async fn run_analysis_with_integrations(&self, path: String, analyzer: Option<String>, enable_llm: bool, generate_docs: Option<String>, ext_docs_path: Option<String>, enable_fusion: bool, enable_integrations: bool) -> Result<()> {
         // Run SOTA analysis first
-        self.run_analysis(path.clone(), analyzer, enable_llm, generate_docs, enable_fusion).await?;
+        self.run_analysis(path.clone(), analyzer, enable_llm, generate_docs, ext_docs_path, enable_fusion).await?;
         
         // If integrations are enabled, run them
         if enable_integrations {
@@ -2029,5 +2073,54 @@ impl CliRunner {
         }
         
         Ok(())
+    }
+
+    /// Parse and validate external documentation paths
+    fn parse_external_docs_paths(&self, ext_paths: &str, project_path: &std::path::Path) -> Result<Vec<std::path::PathBuf>> {
+        use std::path::Path;
+        
+        let mut validated_paths = Vec::new();
+        let paths: Vec<&str> = ext_paths.split(',').map(|s| s.trim()).collect();
+        
+        if paths.len() > 10 {
+            anyhow::bail!("Too many external documentation paths (max 10): found {}", paths.len());
+        }
+        
+        for path_str in paths {
+            if path_str.is_empty() {
+                continue; // Skip empty paths
+            }
+            
+            // Resolve relative paths relative to the project directory
+            let resolved_path = if path_str.starts_with('.') {
+                project_path.join(path_str)
+            } else {
+                Path::new(path_str).to_path_buf()
+            };
+            
+            // Validate path exists
+            if !resolved_path.exists() {
+                anyhow::bail!("External documentation path does not exist: {}", resolved_path.display());
+            }
+            
+            // Validate it's a directory
+            if !resolved_path.is_dir() {
+                anyhow::bail!("External documentation path must be a directory: {}", resolved_path.display());
+            }
+            
+            // Check for duplicates
+            let canonical_path = resolved_path.canonicalize()
+                .map_err(|e| anyhow::anyhow!("Failed to canonicalize path {}: {}", resolved_path.display(), e))?;
+                
+            if validated_paths.contains(&canonical_path) {
+                println!("⚠️  Skipping duplicate external documentation path: {}", canonical_path.display());
+                continue;
+            }
+            
+            validated_paths.push(canonical_path);
+        }
+        
+        println!("✅ Validated {} external documentation paths", validated_paths.len());
+        Ok(validated_paths)
     }
 }

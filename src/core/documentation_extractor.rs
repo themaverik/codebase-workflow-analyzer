@@ -273,6 +273,208 @@ impl DocumentationExtractor {
         Ok(())
     }
 
+    /// Extract documentation from multiple sources with deduplication
+    pub fn extract_multi_source_documentation(&self, project_path: &Path, external_paths: &[PathBuf]) -> Result<ExtractedDocumentationInfo> {
+        println!("Starting multi-source documentation extraction...");
+        println!("   Primary project: {}", project_path.display());
+        println!("   External sources: {}", external_paths.len());
+
+        let mut all_sources = vec![project_path.to_path_buf()];
+        all_sources.extend_from_slice(external_paths);
+        
+        let mut combined_info = ExtractedDocumentationInfo {
+            project_description: None,
+            installation_instructions: Vec::new(),
+            usage_examples: Vec::new(),
+            api_documentation: Vec::new(),
+            architecture_info: Vec::new(),
+            contributing_guidelines: Vec::new(),
+            technologies: Vec::new(),
+            setup_commands: Vec::new(),
+            validation_conflicts: Vec::new(),
+            confidence_score: 0.0,
+            documentation_coverage: DocumentationCoverage {
+                sections_found: Vec::new(),
+                sections_missing: Vec::new(),
+                completeness_score: 0.0,
+                quality_indicators: Vec::new(),
+                improvement_suggestions: Vec::new(),
+            },
+        };
+
+        let mut processed_contents = std::collections::HashSet::new();
+        let mut total_confidence = 0.0;
+        let mut source_count = 0;
+
+        for (i, source_path) in all_sources.iter().enumerate() {
+            println!("   Processing source {}/{}: {}", i + 1, all_sources.len(), source_path.display());
+            
+            match self.extract_documentation(source_path) {
+                Ok(source_info) => {
+                    // Merge documentation with deduplication
+                    self.merge_documentation_info(&mut combined_info, source_info, &mut processed_contents, i == 0)?;
+                    total_confidence += combined_info.confidence_score;
+                    source_count += 1;
+                },
+                Err(e) => {
+                    println!("   Warning: Failed to process {}: {}", source_path.display(), e);
+                    // Continue with other sources instead of failing completely
+                }
+            }
+        }
+
+        // Calculate final confidence score as weighted average
+        combined_info.confidence_score = if source_count > 0 {
+            total_confidence / source_count as f32
+        } else {
+            0.0
+        };
+        
+        println!("Multi-source extraction complete:");
+        println!("   Final confidence: {:.1}%", combined_info.confidence_score * 100.0);
+        
+        Ok(combined_info)
+    }
+
+    /// Merge documentation information from multiple sources with deduplication
+    fn merge_documentation_info(
+        &self,
+        combined_info: &mut ExtractedDocumentationInfo,
+        source_info: ExtractedDocumentationInfo,
+        processed_contents: &mut std::collections::HashSet<String>,
+        is_primary_source: bool,
+    ) -> Result<()> {
+        // Merge project description (prefer primary source or first found)
+        if combined_info.project_description.is_none() || is_primary_source {
+            if let Some(desc) = source_info.project_description {
+                combined_info.project_description = Some(desc);
+            }
+        }
+
+        // Merge installation instructions with deduplication
+        self.merge_string_vectors(
+            &mut combined_info.installation_instructions,
+            source_info.installation_instructions,
+            processed_contents,
+        );
+
+        // Merge usage examples with deduplication
+        self.merge_string_vectors(
+            &mut combined_info.usage_examples,
+            source_info.usage_examples,
+            processed_contents,
+        );
+
+        // Merge API documentation with deduplication
+        self.merge_string_vectors(
+            &mut combined_info.api_documentation,
+            source_info.api_documentation,
+            processed_contents,
+        );
+
+        // Merge architecture info with deduplication
+        self.merge_string_vectors(
+            &mut combined_info.architecture_info,
+            source_info.architecture_info,
+            processed_contents,
+        );
+
+        // Merge contributing guidelines with deduplication
+        self.merge_string_vectors(
+            &mut combined_info.contributing_guidelines,
+            source_info.contributing_guidelines,
+            processed_contents,
+        );
+
+        // Merge technologies (avoid duplicates by name)
+        for tech in source_info.technologies {
+            if !combined_info.technologies.iter().any(|t| t.name == tech.name) {
+                combined_info.technologies.push(tech);
+            }
+        }
+
+        // Merge setup commands with deduplication
+        for cmd in source_info.setup_commands {
+            if !combined_info.setup_commands.contains(&cmd) {
+                combined_info.setup_commands.push(cmd);
+            }
+        }
+
+        // Merge validation conflicts (keep all unique conflicts)
+        for conflict in source_info.validation_conflicts {
+            let is_duplicate = combined_info.validation_conflicts.iter().any(|c| 
+                c.documentation_claim == conflict.documentation_claim &&
+                c.code_reality == conflict.code_reality
+            );
+            if !is_duplicate {
+                combined_info.validation_conflicts.push(conflict);
+            }
+        }
+
+        // Merge documentation coverage sections
+        for section in source_info.documentation_coverage.sections_found {
+            if !combined_info.documentation_coverage.sections_found.contains(&section) {
+                combined_info.documentation_coverage.sections_found.push(section);
+            }
+        }
+
+        // Update coverage score (use highest from all sources)
+        if source_info.documentation_coverage.completeness_score > combined_info.documentation_coverage.completeness_score {
+            combined_info.documentation_coverage.completeness_score = source_info.documentation_coverage.completeness_score;
+        }
+
+        // Merge quality indicators with deduplication
+        for indicator in source_info.documentation_coverage.quality_indicators {
+            if !combined_info.documentation_coverage.quality_indicators.contains(&indicator) {
+                combined_info.documentation_coverage.quality_indicators.push(indicator);
+            }
+        }
+
+        // Merge improvement suggestions with deduplication
+        for suggestion in source_info.documentation_coverage.improvement_suggestions {
+            if !combined_info.documentation_coverage.improvement_suggestions.contains(&suggestion) {
+                combined_info.documentation_coverage.improvement_suggestions.push(suggestion);
+            }
+        }
+
+        // Update overall confidence (accumulate for later averaging)
+        combined_info.confidence_score += source_info.confidence_score;
+
+        println!("   Merged documentation from source (confidence: {:.1}%)", source_info.confidence_score * 100.0);
+        
+        Ok(())
+    }
+
+    /// Merge string vectors with content-based deduplication
+    fn merge_string_vectors(
+        &self,
+        target: &mut Vec<String>,
+        source: Vec<String>,
+        processed_contents: &mut std::collections::HashSet<String>,
+    ) {
+        for item in source {
+            // Create a normalized hash key for deduplication
+            let normalized = self.normalize_content_for_deduplication(&item);
+            
+            if !processed_contents.contains(&normalized) {
+                processed_contents.insert(normalized);
+                target.push(item);
+            }
+        }
+    }
+
+    /// Normalize content for deduplication by removing extra whitespace and lowercasing
+    fn normalize_content_for_deduplication(&self, content: &str) -> String {
+        // Remove extra whitespace, normalize line endings, and lowercase for comparison
+        content
+            .trim()
+            .replace('\n', " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase()
+    }
+
     /// Extract documentation information from a project directory
     pub fn extract_documentation(&self, project_path: &Path) -> Result<ExtractedDocumentationInfo> {
         println!("Starting documentation extraction for project: {}", project_path.display());

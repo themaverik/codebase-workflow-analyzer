@@ -526,8 +526,8 @@ This roadmap transforms the analyzer from "sophisticated components in isolation
 | Context-Aware Analysis | Project-level context | Critical | Complete | ✅ 100% | - | **Completed: LLM segment myopia fixed** |
 | Business Domain LLM | Domain-specific prompting | High | Complete | ✅ 90% | - | Context-aware domain analysis implemented |
 | **Advanced Documentation Features** |
-| External Docs Support | CLI argument parsing | Medium | Todo | ❌ 0% | 1-2 days | `--ext-docs-path` implementation |
-| External Docs Support | Multi-source accumulation | Medium | Todo | ❌ 0% | 2-3 days | Deduplication logic needed |
+| External Docs Support | CLI argument parsing | Medium | Completed | ✅ 100% | Completed | CLI argument parsing with validation and deduplication |
+| External Docs Support | Multi-source accumulation | Medium | Completed | ✅ 100% | Completed | Multi-source documentation processing with deduplication |
 | Cross-Repository Docs | Project relationship detection | Medium | Todo | ❌ 0% | 3-4 days | Semantic matching required |
 | Cross-Repository Docs | Multi-project context | Medium | Todo | ❌ 0% | 2-3 days | Parent project analysis |
 | **Integration & Validation** |
