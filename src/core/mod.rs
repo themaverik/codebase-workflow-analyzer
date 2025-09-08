@@ -34,6 +34,7 @@ pub mod status_inference_engine;
 pub mod analyzers;
 pub mod cache_manager;
 pub mod performance_monitor;
+pub mod context_aware_test;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodebaseAnalysis {

@@ -230,3 +230,32 @@ claude_md_generation:
   include_validation_conflicts: true
   format_without_emojis: true
   validation_conflict_threshold: 0.3
+
+# LLM Context Integration Configuration
+llm_integration:
+  enable_project_context: true
+  context_injection_strategy: "hierarchical"
+  project_type_specific_prompting: true
+  segment_myopia_fix: true
+  model_config:
+    model_name: "llama3.2:3b-instruct-q4_K_M"
+    ollama_url: "http://localhost:11434"
+    context_window: 128000
+    temperature: 0.1
+    max_tokens: 2048
+    timeout_seconds: 180
+  context_weights:
+    project_metadata_weight: 0.4
+    business_domain_hints_weight: 0.3
+    entry_points_weight: 0.2
+    documentation_weight: 0.1
+  prompt_templates:
+    analysis_tool_guidance: "This is a codebase analysis and intelligence tool. Focus on features like static analysis, code parsing, business intelligence extraction, and development workflow automation."
+    web_application_guidance: "This is a web application. Focus on user interface, authentication, data management, and user experience features."
+    api_service_guidance: "This is an API service. Focus on endpoints, data processing, authentication, and integration capabilities."
+    library_guidance: "This is a library or framework. Focus on reusable components, APIs, and developer tools."
+    cli_tool_guidance: "This is a command-line tool. Focus on command processing, file operations, and automation features."
+  confidence_thresholds:
+    high_confidence: 0.8
+    medium_confidence: 0.6
+    low_confidence: 0.4

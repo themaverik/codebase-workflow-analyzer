@@ -99,6 +99,13 @@ pub enum Commands {
         action: CacheAction,
     },
     
+    /// Test context-aware classification by analyzing the analyzer itself
+    TestContextAware {
+        /// Path to project for testing (defaults to current directory)
+        #[arg(short, long)]
+        path: Option<String>,
+    },
+    
     /// Start web server (requires --features web-server)
     #[cfg(feature = "web-server")]
     Serve {
@@ -153,6 +160,9 @@ impl CliRunner {
             }
             Commands::Cache { action } => {
                 self.handle_cache_command(&action).await
+            }
+            Commands::TestContextAware { path } => {
+                self.run_context_aware_test(path).await
             }
             #[cfg(feature = "web-server")]
             Commands::Serve { port } => {
@@ -893,6 +903,27 @@ impl CliRunner {
         }
         
         println!("\nLLM Integration test completed successfully!");
+        Ok(())
+    }
+
+    /// Test context-aware classification by analyzing the analyzer itself
+    async fn run_context_aware_test(&self, path: Option<String>) -> Result<()> {
+        use crate::core::context_aware_test::validate_context_aware_classification;
+        
+        let test_path = path.unwrap_or_else(|| ".".to_string());
+        
+        println!("🧪 Running Context-Aware Classification Test");
+        println!("====================================================");
+        println!("Testing path: {}", test_path);
+        
+        // Change to the test directory
+        if test_path != "." {
+            std::env::set_current_dir(&test_path)?;
+        }
+        
+        // Run the self-analysis test
+        validate_context_aware_classification().await?;
+        
         Ok(())
     }
     

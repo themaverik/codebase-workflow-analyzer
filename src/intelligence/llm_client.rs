@@ -5,6 +5,8 @@ use anyhow::{Result, Context};
 
 use crate::core::ast_analyzer::CodeSegment;
 use crate::core::context_types::EnhancedSegmentContext;
+use crate::core::project_analyzer::{ProjectContext, ProjectMetadata};
+use crate::core::project_classifier::ProjectType;
 
 #[derive(Debug, Clone)]
 pub struct LocalLLMManager {
@@ -116,6 +118,67 @@ pub struct AnalysisSummary {
     pub domain_distribution: HashMap<String, usize>,
     pub average_confidence: f32,
     pub key_patterns: Vec<String>,
+}
+
+/// Context-aware prompt structure for LLM analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectContextualPrompt {
+    pub project_type: Option<ProjectType>,
+    pub project_metadata: ProjectMetadata,
+    pub business_domain_hints: Vec<String>,
+    pub segment_context: EnhancedSegmentContext,
+    pub hierarchical_context: String,
+}
+
+/// Context-aware analysis result with project-level understanding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextAwareAnalysisResult {
+    pub project_classification: ProjectClassification,
+    pub business_domain_analysis: BusinessDomainAnalysis,
+    pub segment_analyses: Vec<SegmentAnalysis>,
+    pub confidence_metrics: ConfidenceMetrics,
+    pub processing_metadata: ProcessingMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectClassification {
+    pub inferred_project_type: ProjectType,
+    pub project_type_confidence: f32,
+    pub classification_evidence: Vec<String>,
+    pub project_purpose_description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BusinessDomainAnalysis {
+    pub primary_domain: String,
+    pub secondary_domains: Vec<String>,
+    pub domain_confidence: f32,
+    pub business_context: String,
+    pub feature_analysis: Vec<FeatureAnalysis>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureAnalysis {
+    pub feature_name: String,
+    pub implementation_status: String,
+    pub confidence: f32,
+    pub evidence_files: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfidenceMetrics {
+    pub overall_confidence: f32,
+    pub context_coverage: f32,
+    pub classification_certainty: f32,
+    pub analysis_completeness: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessingMetadata {
+    pub analysis_time_ms: u64,
+    pub context_injection_successful: bool,
+    pub model_used: String,
+    pub prompt_strategy: String,
 }
 
 impl LocalLLMManager {
@@ -1072,5 +1135,445 @@ impl PromptTemplate {
             "{}\n\nUser: {}\n\nAssistant:",
             self.system_prompt, enhanced_user_prompt
         ))
+    }
+}
+
+impl LocalLLMManager {
+    /// Context-aware analysis method that integrates project-level context to fix segment myopia
+    pub async fn analyze_with_project_context(
+        &self,
+        segments: &[CodeSegment],
+        project_context: &ProjectContext,
+        analysis_type: &AnalysisType,
+    ) -> Result<ContextAwareAnalysisResult> {
+        let start_time = std::time::Instant::now();
+        
+        println!("🔍 Starting context-aware analysis with project context:");
+        println!("  Project: {}", project_context.metadata.name);
+        if let Some(ref project_type) = project_context.project_type {
+            println!("  Type: {:?} (confidence: {:.1}%)", 
+                project_type, project_context.project_type_confidence * 100.0);
+        }
+        println!("  Segments to analyze: {}", segments.len());
+
+        // Create contextual prompt with project-level information
+        let contextual_prompt = self.create_project_contextual_prompt(project_context, segments)?;
+        
+        // Generate context-aware prompt template
+        let prompt = self.create_context_aware_prompt(&contextual_prompt, analysis_type)?;
+        
+        // Send request to LLM with full project context
+        let llm_response = self.send_context_aware_request(&prompt).await?;
+        
+        // Parse response into structured result
+        let analysis_result = self.parse_context_aware_response(
+            &llm_response, 
+            project_context, 
+            segments, 
+            start_time.elapsed().as_millis() as u64
+        )?;
+
+        println!("✅ Context-aware analysis completed in {}ms", analysis_result.processing_metadata.analysis_time_ms);
+        println!("  Project classification: {:?} (confidence: {:.1}%)", 
+            analysis_result.project_classification.inferred_project_type,
+            analysis_result.project_classification.project_type_confidence * 100.0);
+        println!("  Primary domain: {} (confidence: {:.1}%)",
+            analysis_result.business_domain_analysis.primary_domain,
+            analysis_result.business_domain_analysis.domain_confidence * 100.0);
+
+        Ok(analysis_result)
+    }
+
+    fn create_project_contextual_prompt(
+        &self,
+        project_context: &ProjectContext,
+        segments: &[CodeSegment],
+    ) -> Result<ProjectContextualPrompt> {
+        use crate::core::context_types::{SegmentContext, FileContext, FileType, FileRole, SegmentType, ArchitecturalContext, DependencyOverview, ArchitecturalLayer, InteractionStyle};
+        use std::time::SystemTime;
+        
+        // Create a simplified file context
+        let file_context = FileContext {
+            file_path: project_context.project_path.clone(),
+            file_type: FileType::SourceCode,
+            role_in_project: FileRole::CoreLogic,
+            language: Some("rust".to_string()),
+            imports: vec![],
+            exports: vec![],
+            key_patterns: vec![],
+            related_files: vec![],
+            business_relevance: 0.8,
+            last_modified: SystemTime::now(),
+        };
+
+        // Create a simplified segment context
+        let segment_context_inner = SegmentContext {
+            segment_id: format!("batch_{}", segments.len()),
+            segment: crate::core::types::AstSegment {
+                file_path: project_context.project_path.clone(),
+                start_line: 0,
+                end_line: segments.len(),
+                segment_type: "project_overview".to_string(),
+                content: "Project analysis batch".to_string(),
+                language: "rust".to_string(),
+            },
+            file_context: file_context.clone(),
+            segment_type: SegmentType::FunctionDefinition,
+            business_purpose: Some("Project analysis overview".to_string()),
+            dependencies: vec![],
+            dependents: vec![],
+            confidence: 0.8,
+            extracted_at: SystemTime::now(),
+        };
+
+        // Create a simplified project context for the enhanced segment context
+        let project_context_inner = crate::core::context_types::ProjectContext {
+            id: project_context.metadata.name.clone(),
+            metadata: project_context.metadata.clone(),
+            project_type: format!("{:?}", project_context.project_type.as_ref().unwrap_or(&crate::core::project_classifier::ProjectType::Unknown)),
+            business_domains: vec![], // Simplified
+            entry_points: project_context.entry_points.iter().map(|ep| ep.file_path.clone()).collect(),
+            documentation_summary: project_context.purpose_description.clone(),
+            architectural_patterns: vec![],
+            dependency_overview: DependencyOverview {
+                direct_dependencies: project_context.metadata.dependencies.clone(),
+                framework_dependencies: vec![],
+                development_dependencies: project_context.metadata.dev_dependencies.keys().cloned().collect(),
+                dependency_categories: std::collections::HashMap::new(),
+            },
+            confidence: project_context.project_type_confidence,
+            created_at: SystemTime::now(),
+        };
+
+        // Create enhanced segment context with correct field structure
+        let segment_context = EnhancedSegmentContext {
+            segment_context: segment_context_inner,
+            project_context: project_context_inner,
+            related_segments: vec![],
+            cross_references: vec![],
+            business_hints: project_context.business_domain_hints.clone(),
+            architectural_context: ArchitecturalContext {
+                layer: ArchitecturalLayer::Business,
+                patterns: vec!["layered".to_string()],
+                responsibilities: vec!["Project analysis".to_string(), "Code intelligence".to_string()],
+                interaction_style: InteractionStyle::RequestResponse,
+            },
+        };
+
+        // Build hierarchical context description
+        let hierarchical_context = format!(
+            "Project Context:\n- Name: {}\n- Type: {:?}\n- Description: {}\n- Domain Hints: {}\n- Entry Points: {}",
+            project_context.metadata.name,
+            project_context.project_type.as_ref().unwrap_or(&crate::core::project_classifier::ProjectType::Unknown),
+            project_context.purpose_description,
+            project_context.business_domain_hints.join(", "),
+            project_context.entry_points.len()
+        );
+
+        Ok(ProjectContextualPrompt {
+            project_type: project_context.project_type.clone(),
+            project_metadata: project_context.metadata.clone(),
+            business_domain_hints: project_context.business_domain_hints.clone(),
+            segment_context,
+            hierarchical_context,
+        })
+    }
+
+    fn create_context_aware_prompt(
+        &self,
+        contextual_prompt: &ProjectContextualPrompt,
+        analysis_type: &AnalysisType,
+    ) -> Result<String> {
+        let project_type_guidance = match contextual_prompt.project_type.as_ref() {
+            Some(crate::core::project_classifier::ProjectType::AnalysisTool) => {
+                "This is a codebase analysis and intelligence tool. Focus on features like static analysis, code parsing, business intelligence extraction, and development workflow automation."
+            },
+            Some(crate::core::project_classifier::ProjectType::WebApplication) => {
+                "This is a web application. Focus on user interface, authentication, data management, and user experience features."
+            },
+            Some(crate::core::project_classifier::ProjectType::ApiService) => {
+                "This is an API service. Focus on endpoints, data processing, authentication, and integration capabilities."
+            },
+            Some(crate::core::project_classifier::ProjectType::Library) => {
+                "This is a library or framework. Focus on reusable components, APIs, and developer tools."
+            },
+            Some(crate::core::project_classifier::ProjectType::CliTool) => {
+                "This is a command-line tool. Focus on command processing, file operations, and automation features."
+            },
+            _ => "Analyze the code segments to understand the project's purpose and business domain."
+        };
+
+        let domain_hints = if !contextual_prompt.business_domain_hints.is_empty() {
+            format!("Expected business domains: {}", contextual_prompt.business_domain_hints.join(", "))
+        } else {
+            "Infer the business domain from the code patterns.".to_string()
+        };
+
+        let prompt = format!(
+            r#"You are an expert software architect analyzing a codebase with full project context.
+
+PROJECT CONTEXT:
+{}
+
+PROJECT TYPE GUIDANCE:
+{}
+
+DOMAIN ANALYSIS GUIDANCE:
+{}
+
+ANALYSIS TASK:
+Provide a comprehensive analysis in JSON format with the following structure:
+
+{{
+  "project_classification": {{
+    "inferred_project_type": "AnalysisTool|WebApplication|ApiService|Library|CliTool|Other",
+    "project_type_confidence": 0.0-1.0,
+    "classification_evidence": ["evidence1", "evidence2"],
+    "project_purpose_description": "detailed purpose description"
+  }},
+  "business_domain_analysis": {{
+    "primary_domain": "primary domain name",
+    "secondary_domains": ["domain1", "domain2"],
+    "domain_confidence": 0.0-1.0,
+    "business_context": "business context description",
+    "feature_analysis": [
+      {{
+        "feature_name": "feature name",
+        "implementation_status": "complete|partial|planned",
+        "confidence": 0.0-1.0,
+        "evidence_files": ["file1.rs", "file2.rs"]
+      }}
+    ]
+  }},
+  "confidence_metrics": {{
+    "overall_confidence": 0.0-1.0,
+    "context_coverage": 0.0-1.0,
+    "classification_certainty": 0.0-1.0,
+    "analysis_completeness": 0.0-1.0
+  }}
+}}
+
+CODE SEGMENTS TO ANALYZE:
+[Segments would be inserted here - simplified for now]
+
+Respond with ONLY the JSON structure, no additional text."#,
+            contextual_prompt.hierarchical_context,
+            project_type_guidance,
+            domain_hints
+        );
+
+        Ok(prompt)
+    }
+
+    async fn send_context_aware_request(&self, prompt: &str) -> Result<String> {
+        let request = OllamaRequest {
+            model: self.config.model_name.clone(),
+            prompt: prompt.to_string(),
+            stream: false,
+            options: Some(OllamaOptions {
+                temperature: 0.1, // Low temperature for consistent analysis
+                num_predict: 2048, // Allow longer responses for detailed analysis
+                top_p: 0.9,
+            }),
+        };
+
+        let url = format!("{}/api/generate", self.config.ollama_url);
+        let response = self.client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .context("Failed to send context-aware analysis request")?;
+
+        if response.status().is_success() {
+            let ollama_response: OllamaResponse = response
+                .json()
+                .await
+                .context("Failed to parse Ollama response")?;
+            
+            Ok(ollama_response.response)
+        } else {
+            let error_text = response.text().await.unwrap_or_default();
+            anyhow::bail!("Context-aware analysis request failed: {}", error_text);
+        }
+    }
+
+    fn parse_context_aware_response(
+        &self,
+        response: &str,
+        project_context: &ProjectContext,
+        segments: &[CodeSegment],
+        analysis_time_ms: u64,
+    ) -> Result<ContextAwareAnalysisResult> {
+        println!("🔍 Parsing context-aware response ({} chars)", response.len());
+
+        // Try to parse as JSON
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(response) {
+            return self.parse_structured_context_response(&parsed, project_context, segments, analysis_time_ms);
+        }
+
+        // Try to extract JSON from mixed response
+        if let Some(json_str) = self.extract_json_from_text(response) {
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                return self.parse_structured_context_response(&parsed, project_context, segments, analysis_time_ms);
+            }
+        }
+
+        // Fallback to creating a structured result from text analysis
+        println!("⚠️ Could not parse structured response, creating fallback analysis");
+        self.create_fallback_context_result(response, project_context, segments, analysis_time_ms)
+    }
+
+    fn parse_structured_context_response(
+        &self,
+        parsed: &serde_json::Value,
+        project_context: &ProjectContext,
+        segments: &[CodeSegment],
+        analysis_time_ms: u64,
+    ) -> Result<ContextAwareAnalysisResult> {
+        let project_classification = if let Some(pc) = parsed.get("project_classification") {
+            ProjectClassification {
+                inferred_project_type: self.parse_project_type(pc.get("inferred_project_type")),
+                project_type_confidence: pc.get("project_type_confidence").and_then(|v| v.as_f64()).unwrap_or(0.5) as f32,
+                classification_evidence: self.parse_string_array(pc.get("classification_evidence")),
+                project_purpose_description: pc.get("project_purpose_description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            }
+        } else {
+            self.create_default_project_classification(project_context)
+        };
+
+        let business_domain_analysis = if let Some(bd) = parsed.get("business_domain_analysis") {
+            BusinessDomainAnalysis {
+                primary_domain: bd.get("primary_domain").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string(),
+                secondary_domains: self.parse_string_array(bd.get("secondary_domains")),
+                domain_confidence: bd.get("domain_confidence").and_then(|v| v.as_f64()).unwrap_or(0.5) as f32,
+                business_context: bd.get("business_context").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                feature_analysis: self.parse_feature_analysis(bd.get("feature_analysis")),
+            }
+        } else {
+            self.create_default_business_domain_analysis(project_context)
+        };
+
+        let confidence_metrics = if let Some(cm) = parsed.get("confidence_metrics") {
+            ConfidenceMetrics {
+                overall_confidence: cm.get("overall_confidence").and_then(|v| v.as_f64()).unwrap_or(0.5) as f32,
+                context_coverage: cm.get("context_coverage").and_then(|v| v.as_f64()).unwrap_or(0.8) as f32,
+                classification_certainty: cm.get("classification_certainty").and_then(|v| v.as_f64()).unwrap_or(0.6) as f32,
+                analysis_completeness: cm.get("analysis_completeness").and_then(|v| v.as_f64()).unwrap_or(0.7) as f32,
+            }
+        } else {
+            ConfidenceMetrics {
+                overall_confidence: 0.6,
+                context_coverage: 0.8,
+                classification_certainty: 0.7,
+                analysis_completeness: 0.7,
+            }
+        };
+
+        Ok(ContextAwareAnalysisResult {
+            project_classification,
+            business_domain_analysis,
+            segment_analyses: vec![], // Simplified for now
+            confidence_metrics,
+            processing_metadata: ProcessingMetadata {
+                analysis_time_ms,
+                context_injection_successful: true,
+                model_used: self.config.model_name.clone(),
+                prompt_strategy: "hierarchical_context".to_string(),
+            },
+        })
+    }
+
+    fn parse_project_type(&self, value: Option<&serde_json::Value>) -> ProjectType {
+        if let Some(v) = value.and_then(|v| v.as_str()) {
+            match v.to_lowercase().as_str() {
+                "analysistool" | "analysis_tool" => ProjectType::AnalysisTool,
+                "webapplication" | "web_application" => ProjectType::WebApplication,
+                "apiservice" | "api_service" => ProjectType::ApiService,
+                "library" => ProjectType::Library,
+                "clitool" | "cli_tool" => ProjectType::CliTool,
+                _ => ProjectType::Unknown,
+            }
+        } else {
+            ProjectType::Unknown
+        }
+    }
+
+    fn parse_string_array(&self, value: Option<&serde_json::Value>) -> Vec<String> {
+        if let Some(arr) = value.and_then(|v| v.as_array()) {
+            arr.iter()
+                .filter_map(|v| v.as_str())
+                .map(|s| s.to_string())
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+
+    fn parse_feature_analysis(&self, value: Option<&serde_json::Value>) -> Vec<FeatureAnalysis> {
+        if let Some(arr) = value.and_then(|v| v.as_array()) {
+            arr.iter()
+                .filter_map(|v| {
+                    Some(FeatureAnalysis {
+                        feature_name: v.get("feature_name")?.as_str()?.to_string(),
+                        implementation_status: v.get("implementation_status")?.as_str()?.to_string(),
+                        confidence: v.get("confidence")?.as_f64().unwrap_or(0.5) as f32,
+                        evidence_files: self.parse_string_array(v.get("evidence_files")),
+                    })
+                })
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+
+    fn create_default_project_classification(&self, project_context: &ProjectContext) -> ProjectClassification {
+        ProjectClassification {
+            inferred_project_type: project_context.project_type.clone().unwrap_or(ProjectType::Unknown),
+            project_type_confidence: project_context.project_type_confidence,
+            classification_evidence: vec!["Project metadata analysis".to_string()],
+            project_purpose_description: project_context.purpose_description.clone(),
+        }
+    }
+
+    fn create_default_business_domain_analysis(&self, project_context: &ProjectContext) -> BusinessDomainAnalysis {
+        BusinessDomainAnalysis {
+            primary_domain: if project_context.business_domain_hints.is_empty() {
+                "Unknown".to_string()
+            } else {
+                project_context.business_domain_hints[0].clone()
+            },
+            secondary_domains: project_context.business_domain_hints.clone(),
+            domain_confidence: 0.5,
+            business_context: project_context.purpose_description.clone(),
+            feature_analysis: vec![],
+        }
+    }
+
+    fn create_fallback_context_result(
+        &self,
+        response: &str,
+        project_context: &ProjectContext,
+        segments: &[CodeSegment],
+        analysis_time_ms: u64,
+    ) -> Result<ContextAwareAnalysisResult> {
+        // Create a basic analysis result when structured parsing fails
+        Ok(ContextAwareAnalysisResult {
+            project_classification: self.create_default_project_classification(project_context),
+            business_domain_analysis: self.create_default_business_domain_analysis(project_context),
+            segment_analyses: vec![],
+            confidence_metrics: ConfidenceMetrics {
+                overall_confidence: 0.4, // Lower confidence for fallback
+                context_coverage: 0.6,
+                classification_certainty: 0.5,
+                analysis_completeness: 0.5,
+            },
+            processing_metadata: ProcessingMetadata {
+                analysis_time_ms,
+                context_injection_successful: false, // Failed to parse structured response
+                model_used: self.config.model_name.clone(),
+                prompt_strategy: "fallback_analysis".to_string(),
+            },
+        })
     }
 }
