@@ -736,12 +736,49 @@ impl DocumentationExtractor {
         let mut contexts = Vec::new();
         
         for mat in regex.find_iter(content) {
-            let start = mat.start().saturating_sub(100);
-            let end = (mat.end() + 100).min(content.len());
-            contexts.push(&content[start..end]);
+            let start_byte = mat.start().saturating_sub(100);
+            let end_byte = (mat.end() + 100).min(content.len());
+            
+            // Find safe character boundaries
+            let safe_start = self.find_char_boundary_before(content, start_byte);
+            let safe_end = self.find_char_boundary_after(content, end_byte);
+            
+            if let Some(context_slice) = content.get(safe_start..safe_end) {
+                contexts.push(context_slice);
+            }
         }
         
         contexts.join(" | ")
+    }
+
+    /// Find the nearest character boundary at or before the given byte index
+    fn find_char_boundary_before(&self, content: &str, byte_index: usize) -> usize {
+        if byte_index >= content.len() {
+            return content.len();
+        }
+        
+        // Walk backwards to find a character boundary
+        for i in (0..=byte_index).rev() {
+            if content.is_char_boundary(i) {
+                return i;
+            }
+        }
+        0
+    }
+    
+    /// Find the nearest character boundary at or after the given byte index
+    fn find_char_boundary_after(&self, content: &str, byte_index: usize) -> usize {
+        if byte_index >= content.len() {
+            return content.len();
+        }
+        
+        // Walk forwards to find a character boundary
+        for i in byte_index..content.len() {
+            if content.is_char_boundary(i) {
+                return i;
+            }
+        }
+        content.len()
     }
 
     /// Calculate confidence score for a technology detection
@@ -1323,5 +1360,41 @@ REST API endpoints are available at `/api/`.
         assert!(tech_names.contains(&&"React".to_string()));
         assert!(tech_names.contains(&&"Node.js".to_string()));
         assert!(tech_names.contains(&&"Docker".to_string()));
+    }
+    
+    #[test]
+    fn test_unicode_safe_context_extraction() {
+        let extractor = DocumentationExtractor::new().unwrap();
+        
+        // Test content with Unicode characters that could cause boundary issues
+        let unicode_content = "This project uses React with special chars: ─────── and emojis 🚀";
+        
+        // Create a simple regex to match "React"
+        let react_regex = regex::Regex::new(r"React").unwrap();
+        
+        // This should not panic
+        let context = extractor.extract_technology_context(unicode_content, &react_regex);
+        assert!(context.contains("React"));
+        assert!(!context.is_empty());
+    }
+    
+    #[test]
+    fn test_char_boundary_methods() {
+        let extractor = DocumentationExtractor::new().unwrap();
+        
+        let test_content = "Hello ─ World 🌍 Test";
+        
+        // Test boundary finding
+        let boundary_before = extractor.find_char_boundary_before(test_content, 8); // Inside the ─ character
+        let boundary_after = extractor.find_char_boundary_after(test_content, 8);
+        
+        // Both should return valid boundaries
+        assert!(test_content.is_char_boundary(boundary_before));
+        assert!(test_content.is_char_boundary(boundary_after));
+        
+        // Test with content.get() to ensure no panics
+        if let Some(slice) = test_content.get(boundary_before..boundary_after) {
+            assert!(!slice.is_empty());
+        }
     }
 }
