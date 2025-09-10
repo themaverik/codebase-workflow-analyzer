@@ -37,6 +37,7 @@ pub mod performance_monitor;
 pub mod context_aware_test;
 pub mod framework_validation;
 pub mod context_integration_tests;
+pub mod refinement_structures;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodebaseAnalysis {
