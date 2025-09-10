@@ -38,6 +38,7 @@ pub mod context_aware_test;
 pub mod framework_validation;
 pub mod context_integration_tests;
 pub mod refinement_structures;
+pub mod interactive_refinement;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodebaseAnalysis {
