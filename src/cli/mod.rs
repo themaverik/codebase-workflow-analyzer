@@ -114,6 +114,65 @@ pub enum Commands {
     /// Run framework detection validation tests
     TestFrameworkValidation,
     
+    /// Start interactive refinement session for human validation
+    RefineInteractive {
+        /// Path to raw analysis file
+        #[arg(short, long)]
+        input: String,
+        
+        /// Output directory for refined analysis
+        #[arg(short, long, default_value = "./refined-analysis")]
+        output: String,
+    },
+    
+    /// Apply batch refinement with context parameters
+    RefineBatch {
+        /// Path to raw analysis file
+        #[arg(short, long)]
+        input: String,
+        
+        /// Business context description
+        #[arg(long)]
+        context: String,
+        
+        /// Target users (comma-separated)
+        #[arg(long)]
+        target_users: String,
+        
+        /// Output directory for refined analysis
+        #[arg(short, long, default_value = "./refined-analysis")]
+        output: String,
+    },
+    
+    /// Generate workflow-ready documents (CCPM import + Claude Code Spec context)
+    GenerateWorkflowDocs {
+        /// Path to refined analysis file
+        #[arg(short, long)]
+        input: String,
+        
+        /// Output directory for workflow documents
+        #[arg(short, long, default_value = "./workflow-docs")]
+        output: String,
+    },
+    
+    /// Validate refinement quality and integration readiness
+    ValidateRefinement {
+        /// Path to refined analysis file
+        #[arg(short, long)]
+        input: String,
+    },
+    
+    /// Compare analysis results before and after refinement
+    CompareRefinement {
+        /// Path to original analysis file
+        #[arg(long)]
+        original: String,
+        
+        /// Path to refined analysis file
+        #[arg(long)]
+        refined: String,
+    },
+    
     /// Start web server (requires --features web-server)
     #[cfg(feature = "web-server")]
     Serve {
@@ -175,6 +234,21 @@ impl CliRunner {
             }
             Commands::TestFrameworkValidation => {
                 self.run_framework_validation_test().await
+            }
+            Commands::RefineInteractive { input, output } => {
+                self.run_interactive_refinement(input, output).await
+            }
+            Commands::RefineBatch { input, context, target_users, output } => {
+                self.run_batch_refinement(input, context, target_users, output).await
+            }
+            Commands::GenerateWorkflowDocs { input, output } => {
+                self.generate_workflow_documents(input, output).await
+            }
+            Commands::ValidateRefinement { input } => {
+                self.validate_refinement(input).await
+            }
+            Commands::CompareRefinement { original, refined } => {
+                self.compare_refinement_results(original, refined).await
             }
             #[cfg(feature = "web-server")]
             Commands::Serve { port } => {
@@ -2336,5 +2410,234 @@ impl CliRunner {
         
         println!("✅ Validated {} external documentation paths", validated_paths.len());
         Ok(validated_paths)
+    }
+
+    async fn run_interactive_refinement(&self, input: String, output: String) -> Result<()> {
+        use crate::core::interactive_refinement::InteractiveRefinementEngine;
+        use crate::generators::comprehensive_analysis::ComprehensiveAnalysisGenerator;
+
+        println!("🔍 Starting Interactive Refinement Session");
+        println!("   Input: {}", input);
+        println!("   Output: {}", output);
+
+        // Create output directory
+        std::fs::create_dir_all(&output)?;
+
+        // Load the original analysis
+        let analysis_content = std::fs::read_to_string(&input)?;
+        let analysis: crate::core::CodebaseAnalysis = serde_yaml::from_str(&analysis_content)
+            .or_else(|_| serde_json::from_str(&analysis_content))
+            .map_err(|e| anyhow::anyhow!("Failed to parse analysis file: {}", e))?;
+
+        // Start interactive refinement session (clone analysis for refinement engine)
+        let refinement_engine = InteractiveRefinementEngine::new();
+        let refined_analysis = refinement_engine.start_interactive_session(analysis.clone())?;
+
+        // Generate all analysis files (use the loaded analysis, not the one in refined_analysis)
+        let output_path = std::path::Path::new(&output);
+        let generated_files = ComprehensiveAnalysisGenerator::generate_all_analysis_files(
+            &analysis,
+            Some(&refined_analysis),
+            output_path
+        )?;
+
+        println!("\n✅ Interactive refinement completed successfully!");
+        println!("Generated files:");
+        for file in &generated_files {
+            println!("   - {}", file);
+        }
+
+        // Save refined analysis for further use
+        let refined_path = output_path.join("refined-analysis.yaml");
+        let refined_yaml = serde_yaml::to_string(&refined_analysis)?;
+        std::fs::write(&refined_path, refined_yaml)?;
+        println!("   - {}", refined_path.display());
+
+        Ok(())
+    }
+
+    async fn run_batch_refinement(&self, input: String, context: String, target_users: String, output: String) -> Result<()> {
+        use crate::core::interactive_refinement::InteractiveRefinementEngine;
+        use crate::generators::comprehensive_analysis::ComprehensiveAnalysisGenerator;
+
+        println!("🔄 Starting Batch Refinement");
+        println!("   Input: {}", input);
+        println!("   Context: {}", context);
+        println!("   Target Users: {}", target_users);
+        println!("   Output: {}", output);
+
+        // Create output directory
+        std::fs::create_dir_all(&output)?;
+
+        // Load the original analysis
+        let analysis_content = std::fs::read_to_string(&input)?;
+        let analysis: crate::core::CodebaseAnalysis = serde_yaml::from_str(&analysis_content)
+            .or_else(|_| serde_json::from_str(&analysis_content))
+            .map_err(|e| anyhow::anyhow!("Failed to parse analysis file: {}", e))?;
+
+        // Apply batch refinement (clone analysis for refinement engine)
+        let refinement_engine = InteractiveRefinementEngine::new();
+        let refined_analysis = refinement_engine.create_batch_refinement(analysis.clone(), &context, &target_users)?;
+
+        // Generate all analysis files (use the loaded analysis, not the one in refined_analysis)
+        let output_path = std::path::Path::new(&output);
+        let generated_files = ComprehensiveAnalysisGenerator::generate_all_analysis_files(
+            &analysis,
+            Some(&refined_analysis),
+            output_path
+        )?;
+
+        println!("✅ Batch refinement completed successfully!");
+        println!("Generated files:");
+        for file in &generated_files {
+            println!("   - {}", file);
+        }
+
+        // Save refined analysis
+        let refined_path = output_path.join("refined-analysis.yaml");
+        let refined_yaml = serde_yaml::to_string(&refined_analysis)?;
+        std::fs::write(&refined_path, refined_yaml)?;
+        println!("   - {}", refined_path.display());
+
+        Ok(())
+    }
+
+    async fn generate_workflow_documents(&self, input: String, output: String) -> Result<()> {
+        use crate::generators::{RefinedCCMPImportGenerator, RefinedClaudeSpecContextGenerator};
+
+        println!("📄 Generating Workflow Documents");
+        println!("   Input: {}", input);
+        println!("   Output: {}", output);
+
+        // Create output directory
+        std::fs::create_dir_all(&output)?;
+
+        // Load refined analysis
+        let analysis_content = std::fs::read_to_string(&input)?;
+        let refined_analysis: crate::core::refinement_structures::RefinedAnalysisResult = 
+            serde_yaml::from_str(&analysis_content)
+                .map_err(|e| anyhow::anyhow!("Failed to parse refined analysis file: {}", e))?;
+
+        let output_path = std::path::Path::new(&output);
+
+        // Generate CCMP import document
+        let ccmp_content = RefinedCCMPImportGenerator::generate(&refined_analysis)?;
+        let ccmp_path = output_path.join("ccmp-import.md");
+        std::fs::write(&ccmp_path, ccmp_content)?;
+
+        // Generate Claude Code Spec context document  
+        let claude_spec_content = RefinedClaudeSpecContextGenerator::generate(&refined_analysis)?;
+        let claude_spec_path = output_path.join("claude-spec-context.md");
+        std::fs::write(&claude_spec_path, claude_spec_content)?;
+
+        println!("✅ Workflow documents generated successfully!");
+        println!("   📋 CCMP Import: {}", ccmp_path.display());
+        println!("   🔧 Claude Code Spec Context: {}", claude_spec_path.display());
+        println!();
+        println!("Next steps:");
+        println!("   1. Import ccmp-import.md into your CCPM workflow");
+        println!("   2. Use claude-spec-context.md for Claude Code Spec Workflow development");
+
+        Ok(())
+    }
+
+    async fn validate_refinement(&self, input: String) -> Result<()> {
+        println!("✅ Validating Refinement Quality");
+        println!("   Input: {}", input);
+
+        // Load refined analysis
+        let analysis_content = std::fs::read_to_string(&input)?;
+        let refined_analysis: crate::core::refinement_structures::RefinedAnalysisResult = 
+            serde_yaml::from_str(&analysis_content)
+                .map_err(|e| anyhow::anyhow!("Failed to parse refined analysis file: {}", e))?;
+
+        // Validation metrics
+        let metadata = &refined_analysis.metadata;
+        let integration_readiness = &refined_analysis.integration_readiness;
+
+        println!("\n📊 Refinement Quality Report");
+        println!("   Session ID: {}", metadata.refinement_session_id);
+        println!("   Stakeholders: {:?}", metadata.refinement_stakeholders);
+        println!("   Confidence Improvement: {:.1}%", 
+            metadata.confidence_improvement.overall_improvement * 100.0);
+
+        println!("\n🔍 Detailed Improvements:");
+        println!("   Business Context: {:.1}% → {:.1}%", 
+            metadata.confidence_improvement.business_context.0 * 100.0,
+            metadata.confidence_improvement.business_context.1 * 100.0);
+        println!("   User Personas: {:.1}% → {:.1}%", 
+            metadata.confidence_improvement.user_personas.0 * 100.0,
+            metadata.confidence_improvement.user_personas.1 * 100.0);
+        println!("   Feature Priorities: {:.1}% → {:.1}%", 
+            metadata.confidence_improvement.feature_priorities.0 * 100.0,
+            metadata.confidence_improvement.feature_priorities.1 * 100.0);
+
+        println!("\n🔗 Integration Readiness:");
+        println!("   CCMP Import Ready: {}", 
+            if integration_readiness.ccmp_import_ready { "✅" } else { "❌" });
+        println!("   Claude Code Spec Ready: {}", 
+            if integration_readiness.claude_spec_ready { "✅" } else { "❌" });
+        println!("   Overall Validation Score: {:.1}/10", 
+            integration_readiness.validation_score * 10.0);
+
+        if integration_readiness.validation_score >= 0.8 {
+            println!("\n🎉 Refinement quality is EXCELLENT - ready for production workflows!");
+        } else if integration_readiness.validation_score >= 0.6 {
+            println!("\n👍 Refinement quality is GOOD - suitable for most workflows");
+        } else {
+            println!("\n⚠️  Refinement quality is LOW - consider additional validation");
+        }
+
+        Ok(())
+    }
+
+    async fn compare_refinement_results(&self, original: String, refined: String) -> Result<()> {
+        println!("🔍 Comparing Refinement Results");
+        println!("   Original: {}", original);
+        println!("   Refined: {}", refined);
+
+        // Load both analyses
+        let original_content = std::fs::read_to_string(&original)?;
+        let original_analysis: crate::core::CodebaseAnalysis = serde_yaml::from_str(&original_content)
+            .or_else(|_| serde_json::from_str(&original_content))
+            .map_err(|e| anyhow::anyhow!("Failed to parse original analysis: {}", e))?;
+
+        let refined_content = std::fs::read_to_string(&refined)?;
+        let refined_analysis: crate::core::refinement_structures::RefinedAnalysisResult = 
+            serde_yaml::from_str(&refined_content)
+                .map_err(|e| anyhow::anyhow!("Failed to parse refined analysis: {}", e))?;
+
+        // Compare key metrics
+        println!("\n📊 Comparison Results:");
+        
+        println!("   Product Type:");
+        println!("     Original: {}", original_analysis.business_context.inferred_product_type);
+        println!("     Refined:  {}", refined_analysis.business_intelligence.validated_product_type);
+
+        println!("   User Personas:");
+        println!("     Original: {} detected", original_analysis.business_context.primary_user_personas.len());
+        println!("     Refined:  {} validated", refined_analysis.business_intelligence.validated_personas.len());
+
+        println!("   Business Intelligence:");
+        println!("     Original Confidence: {:.1}%", original_analysis.business_context.confidence * 100.0);
+        println!("     Refined Confidence:  {:.1}%", 
+            refined_analysis.metadata.confidence_improvement.business_context.1 * 100.0);
+
+        println!("   Analysis Quality:");
+        println!("     Original Analysis Score: {:.1}%", original_analysis.analysis_metadata.confidence_score * 100.0);
+        println!("     Refined Validation Score: {:.1}%", refined_analysis.integration_readiness.validation_score * 100.0);
+
+        let improvement = refined_analysis.metadata.confidence_improvement.overall_improvement;
+        if improvement > 0.2 {
+            println!("\n🚀 SIGNIFICANT IMPROVEMENT achieved through refinement!");
+        } else if improvement > 0.1 {
+            println!("\n📈 GOOD IMPROVEMENT achieved through refinement");
+        } else {
+            println!("\n📊 MINIMAL IMPROVEMENT - consider additional refinement");
+        }
+
+        println!("   Overall Confidence Improvement: +{:.1}%", improvement * 100.0);
+
+        Ok(())
     }
 }
