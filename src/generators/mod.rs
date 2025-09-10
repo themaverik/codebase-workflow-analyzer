@@ -10,6 +10,8 @@ pub mod executive_summary;
 pub mod yaml_analysis;
 pub mod ccpm_import;
 pub mod claude_spec_context;
+pub mod refined_ccmp_import;
+pub mod refined_claude_spec_context;
 
 pub use markdown::MarkdownGenerator;
 pub use prd::PRDGenerator;
@@ -19,6 +21,8 @@ pub use executive_summary::ExecutiveSummaryGenerator;
 pub use yaml_analysis::YamlAnalysisGenerator;
 pub use ccpm_import::CCPMImportGenerator;
 pub use claude_spec_context::ClaudeSpecContextGenerator;
+pub use refined_ccmp_import::RefinedCCMPImportGenerator;
+pub use refined_claude_spec_context::RefinedClaudeSpecContextGenerator;
 
 pub trait DocumentGenerator {
     fn generate(&self, analysis: &CodebaseAnalysis, intelligent_analysis: Option<&IntelligentAnalysis>) -> Result<String>;
